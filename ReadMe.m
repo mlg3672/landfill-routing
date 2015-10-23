@@ -29,6 +29,13 @@ recycling technology - limited, 0-100%
 
 ### Part III. 
 scenario analysis - policies to influence climate impacts
-A. increasing parking cost (e.g. increase per trip cost)
-B. green procurement 
-C. improving public transport (e.g. decrease bus time, expand bus routes)
+A. distributed vs. centralized network / boundaries: state, county, region
+B. vehicle type 
+C. recycling technology mandates
+D. change in route - impact on vulnerable communities, traffic congestion, local ecosystems 
+
+Other questions: 
+1. what is the current carbon footprint of each region, state, county? How does this change the balance?
+2. Is cooperation in routing necessary or beneficial?
+3. How does each region compare?
+4. 
