@@ -1,6 +1,7 @@
 # the objective of this code is to read and get lat lon data from landfill table file
 library(stringr)
 library(data.table)
+library(plyr)
 # set working directory
 setwd("~/Documents/Python-Projects/landfill-routing")
 
@@ -24,7 +25,17 @@ NAstate<-dat[is.na(dat[,4])==T,]#0
 NAcity<-dat[is.na(dat[,2])==T,]#1939
 NAcounty<-dat[is.na(dat[,3])==T,] #476 AK only state with no city,zip or county - fixed!
 
-# delete Puerto Rico "PR", Virgin Islands "VI", Guam "GU"
+# delete territories Puerto Rico "PR", Virgin Islands "VI", Guam "GU", "MP", "AS"
+dat<-dat[dat$state!="PR",]
+dat<-dat[dat$state!="VI",]
+dat<-dat[dat$state!="GU",]
+dat<-dat[dat$state!="MP",]
+dat<-dat[dat$state!="AS",]
+unique(dat$state)
+
+split(df, list(df$state), drop = TRUE) # split df by state abbrev
+
+dat[-dat$state=="VI",]
 ## select all cases by location
 unique(dat$state)
 MAcases<-dat[grepl("MA",dat$state),]
