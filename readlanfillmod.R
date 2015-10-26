@@ -33,13 +33,17 @@ dat<-dat[dat$state!="MP",]
 dat<-dat[dat$state!="AS",]
 unique(dat$state)
 
-split(df, list(df$state), drop = TRUE) # split df by state abbrev
+# Alaska data
+AKcases<-read.csv("AK_landfills.csv",colClasses = "character")
+summary(AKcases)
+AKcases<-AKcases[c(1:18),c(2,7:12)]
+colnames(AKcases)<- c("name","city","county","state","zip","lat","lon")
 
-dat[-dat$state=="VI",]
 ## select all cases by location
 unique(dat$state)
 MAcases<-dat[grepl("MA",dat$state),]
 head(MAcases)
+# OR split(df, list(df$state), drop = TRUE) # split df by state abbrev
 
 # counts number of data selects out incomplete data
 c.fields = count.fields('uslandfill_mod.csv')
