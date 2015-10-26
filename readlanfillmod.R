@@ -20,10 +20,10 @@ dim(dats)
 
 ## check that all zip codes have 5 digits
 dat[nchar(dat[,5])!=5,]#MA has 4 digits - fixed!
-NAzip<-dat[is.na(dat[,5])==T,]#2493
-NAstate<-dat[is.na(dat[,4])==T,]#0
-NAcity<-dat[is.na(dat[,2])==T,]#1939
-NAcounty<-dat[is.na(dat[,3])==T,] #476 AK only state with no city,zip or county - fixed!
+NAzip<-is.na(dat$zip)#2493
+NAstate<-is.na(dat$state)#0
+NAcity<-is.na(dat$city)#1939
+NAcounty<-is.na(dat$county) #476 AK only state with no city,zip or county - fixed!
 
 # delete territories Puerto Rico "PR", Virgin Islands "VI", Guam "GU", "MP", "AS"
 dat<-dat[dat$state!="PR",]
@@ -33,7 +33,7 @@ dat<-dat[dat$state!="MP",]
 dat<-dat[dat$state!="AS",]
 unique(dat$state)
 
-# Alaska data
+# import Alaska data
 AKcases<-read.csv("AK_landfills.csv",colClasses = "character")
 summary(AKcases)
 AKcases<-AKcases[c(1:18),c(2,7:12)]
@@ -45,6 +45,17 @@ MAcases<-dat[grepl("MA",dat$state),]
 head(MAcases)
 # OR split(df, list(df$state), drop = TRUE) # split df by state abbrev
 
-# counts number of data selects out incomplete data
-c.fields = count.fields('uslandfill_mod.csv')
-tab2 = tab[ - which(c.fields != max(c.fields)),] # correctly identies 1 obv. missing
+##  find lat lon -----------
+library(ggmap)
+library(plyr)
+wzip<-dat[!NAzip & NAcity,]#find rows with zip but no city value
+wcity<-dat[!NAcity & NAzip,]# find rows with city value but no zip - 3100
+wzcity<-dat[!NAzip & !NAcity,]# find rows with city and zip - 1055
+summary(wcity)
+summary(wzip)
+
+gisdf1 <-geocode(paste(c("landfill"),wzip$state, wzip$zip,"US",sep=","))
+gisdf2 <-geocode(paste(c("landfill"),wcity$city, wcity$state,"US",sep=","))
+gisdf3 <-geocode(paste(c("landfill"),wzcity$city,wzcity$state, wzcity$zip,"US",sep=","))
+
+
