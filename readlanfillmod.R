@@ -83,14 +83,13 @@ XYpairs <- data.frame(lon=wcitygis$lon,lat=wcitygis$lat)
 plot(XYpairs)
 dim(XYpairs)
 
-Ypairs <-data.frame(lon=datos$lon,lat=datos$lat)
-
+Ypairs <-data.frame(lon=datos$lon,lat=datos$lat, size=datos$size, stringsAsFactors = F)
 
 
 # find distance between points
-routes<-data.frame(distance=rep(0,dim(XYpairs)[1]-1))
+routes<-data.frame(distance=rep(0,dim(XYpairs)[1]))
 for (x in 1:dim(XYpairs)[1]) {
-  from=as.numeric(Ypairs[x,])
+  from=as.numeric(Ypairs[x,1:2])
   to=as.numeric(XYpairs[x,])
   distance <- mapdist(from, to, mode="driving", output="simple")
   routes$from.lon[x]<-from[1]
@@ -99,6 +98,7 @@ for (x in 1:dim(XYpairs)[1]) {
   routes$to.lat[x]<-to[2]
   routes$distance[x]<-distance$miles
 }
+
 
 # write data to csv
 write.csv(x=routes,file="distance_lf.csv")
