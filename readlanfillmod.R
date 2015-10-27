@@ -1,4 +1,4 @@
-# the objective of this code is to read and get lat lon data from landfill table file
+# the objective of this code is to read and get lat lon data from file of locations
 library(stringr)
 library(data.table)
 library(plyr)
@@ -53,9 +53,37 @@ wcity<-dat[!NAcity & NAzip,]# find rows with city value but no zip - 3100
 wzcity<-dat[!NAzip & !NAcity,]# find rows with city and zip - 1055
 summary(wcity)
 summary(wzip)
+summary(wzcity)
 
-gisdf1 <-geocode(paste(c("landfill"),wzip$state, wzip$zip,"US",sep=","))
-gisdf2 <-geocode(paste(c("landfill"),wcity$city, wcity$state,"US",sep=","))
-gisdf3 <-geocode(paste(c("landfill"),wzcity$city,wzcity$state, wzcity$zip,"US",sep=","))
+#geocode
+gisdf11 <-geocode(paste(wzip$state, wzip$zip,"USA",sep=","))
+gisdf2 <-geocode(paste(c("landfill"),wcity$city, wcity$state,"USA",sep=","))
+gisdf3 <-geocode(paste(c("landfill"),wzcity$city,wzcity$state, wzcity$zip,"USA",sep=","))
 
+# bind columns of lat lon
+wzipgis<-cbind(gisdf1,wzip)
+wcitygis<-cbind(gisdf2,wcity)
+wzcitygis<-cbind(gisdf3,wzcity)
 
+rbind(wzipgis, wcitygis,wzcitygis) # bind all dataframes
+
+#plot lat lon pairs
+XYpairs <- data.frame(lon=wcitygis$lon,lat=wcitygis$lat)
+plot(XYpairs)
+dim(XYpairs)
+
+# find distance between points
+routes<-data.frame(distance=rep(0,dim(XYpairs)[1]-1))
+for (x in 2:dim(XYpairs)[1]) {
+  from=as.numeric(XYpairs[x,])
+  to=as.numeric(XYpairs[x-1,])
+  distance <- mapdist(from, to, mode="driving", output="simple")
+  routes$from.lon<-from[1]
+  routes$from.lat<-from[2]
+  routes$to.lon<-to[1]
+  routes$to.lat<-to[2]
+  routes$distance<-distance$miles
+}
+
+# write data to csv
+write.csv(x=gbus,file="bustimes.csv")
