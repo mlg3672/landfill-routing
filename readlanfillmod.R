@@ -78,12 +78,12 @@ for (x in 2:dim(XYpairs)[1]) {
   from=as.numeric(XYpairs[x,])
   to=as.numeric(XYpairs[x-1,])
   distance <- mapdist(from, to, mode="driving", output="simple")
-  routes$from.lon<-from[1]
-  routes$from.lat<-from[2]
-  routes$to.lon<-to[1]
-  routes$to.lat<-to[2]
-  routes$distance<-distance$miles
+  routes$from.lon[x-1]<-from[1]
+  routes$from.lat[x-1]<-from[2]
+  routes$to.lon[x-1]<-to[1]
+  routes$to.lat[x-1]<-to[2]
+  routes$distance[x-1]<-distance$miles
 }
 
 # write data to csv
-write.csv(x=gbus,file="bustimes.csv")
+write.csv(x=routes,file="distance_lf.csv")
