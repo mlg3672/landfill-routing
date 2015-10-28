@@ -76,28 +76,42 @@ wzipgis<-cbind(gisdf1,wzip)
 wcitygis<-cbind(gisdf2,wcity)
 wzcitygis<-cbind(gisdf3,wzcity)
 
-getto<-rbind(wzipgis, wcitygis,wzcitygis) # bind all dataframes
+geto<-rbind(wzipgis, wcitygis,wzcitygis) # bind all dataframes
 
-# add region code column
-NYcases$region<-rep("000",dim(NYcases)[1])
-## code 001 for west coast states
+
+
+## code 001 for west coast 
 t0<-data.frame(c("HI","AK","OR","WA","ID","LA","WY","MO",
                  "AZ","NM","TX","OK","KS","NV","UT","CO",
                  "CA","NB"))
-t1<-as.list(t(t0))
-t2<-paste(t1,collapse = "|")
-NYcases[grepl(t2,NYcases$county),]$region<-"002"
-## code 002 for 
+
+regioncode(t0,"001")
+
+## code 002 for midwest 
 t0<-data.frame(c("IO", "IL", "CT","SD", "NY", "NJ", "IN", 
                  "WI", "WV"," ND", "MN", "MI", "KY", "OH", 
                  "PA", "TN", "MS"))
-## code 003 for 
-t0<-data.frame(c("RI", "GA", "SC", "TN", "MS","AL", "SC", "FL", "NC"))
-## code 004 for DC, VA, DE, MD
-t0<-data.frame(c("DC","VA","DE","MD"))
-## code 005 for VT, NH, ME
-t0<-data.frame(c("VT","NH","ME"))
+dat<-regioncode(t0,"002",dat)
 
+## code 003 for south
+t0<-data.frame(c("RI", "GA", "SC", "TN", "MS","AL", "SC", "FL", "NC"))
+dat<-regioncode(t0,"003",dat)
+
+## code 004 for mid-atlantic 
+t0<-data.frame(c("DC","VA","DE","MD"))
+dat<-regioncode(t0,"004",dat)
+
+## code 005 for new england
+t0<-data.frame(c("VT","NH","ME"))
+dat<-regioncode(t0,"005",dat)
+
+regioncode<-function(t0,code,tab){
+  tab$region<-rep("000",dim(tab)[1])# add region code column
+  t1<-as.list(t(t0))
+  t2<-paste(t1,collapse = "|")
+  tab[grepl(t2,tab$state),]$region<-code
+  return(tab)
+}
 #plot lat lon pairs
 XYpairs <- data.frame(lon=wcitygis$lon,lat=wcitygis$lat)
 plot(XYpairs)
