@@ -52,8 +52,8 @@ colnames(AKcases)<- c("name","city","county","state","zip","lat","lon")
 
 ## select all cases by location
 unique(dat$state)
-MAcases<-dat[grepl("MA",dat$state),]
-head(MAcases)
+NYcases<-dat[grepl("NY",dat$state),]
+head(NYcases)
 # OR split(df, list(df$state), drop = TRUE) # split df by state abbrev
 
 ##  find lat lon -----------
@@ -76,7 +76,27 @@ wzipgis<-cbind(gisdf1,wzip)
 wcitygis<-cbind(gisdf2,wcity)
 wzcitygis<-cbind(gisdf3,wzcity)
 
-rbind(wzipgis, wcitygis,wzcitygis) # bind all dataframes
+getto<-rbind(wzipgis, wcitygis,wzcitygis) # bind all dataframes
+
+# add region code column
+NYcases$region<-rep("000",dim(NYcases)[1])
+## code 001 for west coast states
+t0<-data.frame(c("HI","AK","OR","WA","ID","LA","WY","MO",
+                 "AZ","NM","TX","OK","KS","NV","UT","CO",
+                 "CA","NB"))
+t1<-as.list(t(t0))
+t2<-paste(t1,collapse = "|")
+NYcases[grepl(t2,NYcases$county),]$region<-"002"
+## code 002 for 
+t0<-data.frame(c("IO", "IL", "CT","SD", "NY", "NJ", "IN", 
+                 "WI", "WV"," ND", "MN", "MI", "KY", "OH", 
+                 "PA", "TN", "MS"))
+## code 003 for 
+t0<-data.frame(c("RI", "GA", "SC", "TN", "MS","AL", "SC", "FL", "NC"))
+## code 004 for DC, VA, DE, MD
+t0<-data.frame(c("DC","VA","DE","MD"))
+## code 005 for VT, NH, ME
+t0<-data.frame(c("VT","NH","ME"))
 
 #plot lat lon pairs
 XYpairs <- data.frame(lon=wcitygis$lon,lat=wcitygis$lat)
