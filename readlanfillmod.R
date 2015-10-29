@@ -105,51 +105,91 @@ regioncode<-function(t0,code,tab){
 ##  find lat lon -----------
 library(ggmap)
 library(plyr)
-wozcity<-dat[NAzip & NAcity,] #find rows with only state value -1824
+wnone<-dat[NAzip & NAcity & NAcounty,]# 3 states IL, WV, and AK
+wcounty<-dat[NAzip & NAcity & !NAcounty,] #find rows with only state value -1596
 wzip<-dat[!NAzip & NAcity,]#find rows with zip but no city value - 109
 wcity<-dat[!NAcity & NAzip,]# find rows with city value but no zip - 656
 wzcity<-dat[!NAzip & !NAcity,]# find rows with city and zip - 946
-summary(wcity)
-summary(wzip)
-summary(wzcity)
 
 #geocode -----
-gisdf11 <-geocode(paste(wzip$state, wzip$zip,"USA",sep=","))
+gisdf0<-geocode(paste(c("landfill"),wcounty$county, wcounty$state,"USA",sep=","))
+gisdf1 <-geocode(paste(wzip$state, wzip$zip,"USA",sep=","))
 gisdf2 <-geocode(paste(c("landfill"),wcity$city, wcity$state,"USA",sep=","))
 gisdf3 <-geocode(paste(c("landfill"),wzcity$city,wzcity$state, wzcity$zip,"USA",sep=","))
 
 # bind columns of lat lon
+wcountygis<-cbind(wcounty,gisdf0)
 wzipgis<-cbind(wzip,gisdf1)
 wcitygis<-cbind(wcity,gisdf2)
 wzcitygis<-cbind(wzcity,gisdf3)
 
-geto<-rbind(wzipgis, wcitygis) # bind all dataframes
+geto<-rbind(wzipgis, wcitygis,wzcitygis,wcountygis) # bind all dataframes
 
 #plot lat lon pairs -----
-XYpairs <- data.frame(lon=geto$lon,lat=geto$lat,region=geto$region, state=geto$state)
-plot(XYpairs)
+XYpairs <- data.frame(lon=geto$lon,lat=geto$lat, state=geto$state, region=geto$region)
+plot(XYpairs$lon, XYpairs$lat)
 dim(XYpairs)
 
 Ypairs <-data.frame(lon=datos$lon,lat=datos$lat, size=datos$size, 
-                    state=datos$state, stringsAsFactors = F)
+                    state=datos$state, region=datos$region, stringsAsFactors = F)
 # test set
 YYpairs<-Ypairs[1:5,]
 XYYpairs<-XYpairs[1:5,]
 
 #split pairs by region 
-region1s<-datos[grepl("001",datos$region),]
-region1t<-dat[grepl("001",dat$region),]
+XYYpairs<-XYpairs[grepl("001",XYpairs$region),]
+YYpairs<-Ypairs[grepl("001",Ypairs$region),]
 
+## reduce the number of points --------
+# due to limiation of gmap to 2000 queries 
+
+# find nearest point, eliminate most frequent
+Nearest<-function(df) {
+  nearest = 1000
+  df$nearest<-0
+  df$y.near<-0
+  for (x in 1:dim(df)[1]) {
+    newdf<-df[-x,]
+    for ( y in 1:dim(newdf)[1]) {
+      distance<-sqrt((x[1]-y[1])^2+(x[2]-y[2])^2)
+      if (distance <= nearest) {
+        nearest<- distance
+        ynear<-y
+      }
+    }
+    df$nearest[x,]<-nearest
+    df$y.near[x,]<-ynear
+  }
+  return(df)
+}
+
+Mode <- function(x) {
+  ux <- unique(x)
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
+ReducePoints<-function(df){
+  while (dim(df)[1] > 10){
+    df<-Nearest(df)
+    m<-Mode(df$y.near)
+    df<-df[-m,]
+    plot(df$lon,df$lat)
+  }
+  
+}
+  
 # find distance between points -----
-routes<-data.frame(from.lon=NA,from.lat=NA,to.lon=NA,to.lat=NA,distance=NA,size=NA)
+routes<-data.frame(from.lon=NA,from.lat=NA,to.lon=NA,to.lat=NA,
+                   distance=NA,size=NA,from.state=NA, to.state=NA)
 for (y in 1:dim(YYpairs)[1]){
   from = as.numeric(YYpairs[y,1:2])
   for (x in 1:dim(XYYpairs)[1]) {
-    to = as.numeric(XYYpairs[x,])
+    to = as.numeric(XYYpairs[x,1:2])
     distance <- mapdist(from, to, mode="driving", output="simple")
     newrow<-data.frame(from.lon = from[1],from.lat = from[2],
                        to.lon = to[1], to.lat = to[2], 
-                       distance = distance$miles, size=YYpairs[y,"size"], from.state, to.state)
+                       distance = distance$miles, size=YYpairs[y,"size"], 
+                       from.state=YYpairs[x,]$state, to.state=XYYpairs[y,]$state)
     routes<-rbind(newrow, routes)
     
     }
