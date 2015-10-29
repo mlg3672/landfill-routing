@@ -44,6 +44,9 @@ unique(dat$state)
 datos<-datos[datos$state!="PR",]
 unique(datos$state)
 
+# erase duplicated rows
+dat<-dat[!duplicated(dat),]
+
 # import Alaska data
 AKcases<-read.csv("AK_landfills.csv",colClasses = "character")
 summary(AKcases)
@@ -56,6 +59,44 @@ NYcases<-dat[grepl("NY",dat$state),]
 head(NYcases)
 # OR split(df, list(df$state), drop = TRUE) # split df by state abbrev
 
+# add region code column -----
+dat$region<-rep("000",dim(dat)[1])
+## code 001 for west coast 
+t0<-data.frame(c("HI","AR","OR","WA","ID","LA","WY","MO",
+                 "AZ","NM","TX","OK","KS","NV","UT","CO",
+                 "CA","NE","MT"))
+
+dat<-regioncode(t0,"001",dat)
+datos<-regioncode(t0,"001",datos) 
+## code 002 for midwest 
+t0<-data.frame(c("IA", "IL", "CT","SD", "NY", "NJ", "IN", 
+                 "WI", "WV","ND", "MN", "MI", "KY", "OH", 
+                 "PA", "TN", "MS"))
+dat<-regioncode(t0,"002",dat)
+datos<-regioncode(t0,"002",datos) 
+
+## code 003 for south
+t0<-data.frame(c("RI", "GA", "SC", "TN", "MS","AL", "SC", "FL", "NC","MA"))
+dat<-regioncode(t0,"003",dat)
+datos<-regioncode(t0,"003",datos) 
+
+## code 004 for mid-atlantic 
+t0<-data.frame(c("DC","VA","DE","MD"))
+dat<-regioncode(t0,"004",dat)
+datos<-regioncode(t0,"004",datos) 
+
+## code 005 for new england
+t0<-data.frame(c("VT","NH","ME"))
+dat<-regioncode(t0,"005",dat)
+datos<-regioncode(t0,"005",datos) 
+
+regioncode<-function(t0,code,tab){
+  t1<-as.list(t(t0))
+  t2<-paste(t1,collapse = "|")
+  tab[grepl(t2,tab$state),]$region<-code
+  return(tab)
+}
+
 ##  find lat lon -----------
 library(ggmap)
 library(plyr)
@@ -66,7 +107,7 @@ summary(wcity)
 summary(wzip)
 summary(wzcity)
 
-#geocode
+#geocode -----
 gisdf11 <-geocode(paste(wzip$state, wzip$zip,"USA",sep=","))
 gisdf2 <-geocode(paste(c("landfill"),wcity$city, wcity$state,"USA",sep=","))
 gisdf3 <-geocode(paste(c("landfill"),wzcity$city,wzcity$state, wzcity$zip,"USA",sep=","))
@@ -78,61 +119,31 @@ wzcitygis<-cbind(gisdf3,wzcity)
 
 geto<-rbind(wzipgis, wcitygis,wzcitygis) # bind all dataframes
 
-
-
-## code 001 for west coast 
-t0<-data.frame(c("HI","AK","OR","WA","ID","LA","WY","MO",
-                 "AZ","NM","TX","OK","KS","NV","UT","CO",
-                 "CA","NB"))
-
-regioncode(t0,"001")
-
-## code 002 for midwest 
-t0<-data.frame(c("IO", "IL", "CT","SD", "NY", "NJ", "IN", 
-                 "WI", "WV"," ND", "MN", "MI", "KY", "OH", 
-                 "PA", "TN", "MS"))
-dat<-regioncode(t0,"002",dat)
-
-## code 003 for south
-t0<-data.frame(c("RI", "GA", "SC", "TN", "MS","AL", "SC", "FL", "NC"))
-dat<-regioncode(t0,"003",dat)
-
-## code 004 for mid-atlantic 
-t0<-data.frame(c("DC","VA","DE","MD"))
-dat<-regioncode(t0,"004",dat)
-
-## code 005 for new england
-t0<-data.frame(c("VT","NH","ME"))
-dat<-regioncode(t0,"005",dat)
-
-regioncode<-function(t0,code,tab){
-  tab$region<-rep("000",dim(tab)[1])# add region code column
-  t1<-as.list(t(t0))
-  t2<-paste(t1,collapse = "|")
-  tab[grepl(t2,tab$state),]$region<-code
-  return(tab)
-}
-#plot lat lon pairs
-XYpairs <- data.frame(lon=wcitygis$lon,lat=wcitygis$lat)
+#plot lat lon pairs -----
+XYpairs <- data.frame(lon=geto$lon,lat=geto$lat,region=geto$region)
 plot(XYpairs)
 dim(XYpairs)
 
-Ypairs <-data.frame(lon=datos$lon,lat=datos$lat, size=datos$size, stringsAsFactors = F)
+Ypairs <-data.frame(lon=datos$lon,lat=datos$lat, size=datos$size, region=datos$region, stringsAsFactors = F)
 
+#split pairs by region 
+datos[grepl("001",dat$region),]
 
-# find distance between points
+# find distance between points -----
 routes<-data.frame(distance=rep(0,dim(XYpairs)[1]))
-for (x in 1:dim(XYpairs)[1]) {
-  from=as.numeric(Ypairs[x,1:2])
-  to=as.numeric(XYpairs[x,])
-  distance <- mapdist(from, to, mode="driving", output="simple")
-  routes$from.lon[x]<-from[1]
-  routes$from.lat[x]<-from[2]
-  routes$to.lon[x]<-to[1]
-  routes$to.lat[x]<-to[2]
-  routes$distance[x]<-distance$miles
-}
+for (y in 1:dimYpairs[1]){
+  for (x in 1:dim(XYpairs)[1]) {
+    from=as.numeric(Ypairs[y,1:2])
+    to=as.numeric(XYpairs[x,])
+    distance <- mapdist(from, to, mode="driving", output="simple")
+    routes$from.lon[x]<-from[1]
+    routes$from.lat[x]<-from[2]
+    routes$to.lon[x]<-to[1]
+    routes$to.lat[x]<-to[2]
+    routes$distance[x]<-distance$miles
+    }
+  }
 
 
-# write data to csv
+# write data to csv -----
 write.csv(x=routes,file="distance_lf.csv")
