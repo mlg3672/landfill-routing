@@ -51,7 +51,11 @@ dat<-dat[!duplicated(dat),]
 AKcases<-read.csv("AK_landfills.csv",colClasses = "character")
 summary(AKcases)
 AKcases<-AKcases[c(1:18),c(2,7:12)]
-colnames(AKcases)<- c("name","city","county","state","zip","lat","lon")
+colnames(AKcases)<- c("name","city","county","state","zip","lon","lat")
+
+dat<-dat[!grepl("AK",dat$state),] # delete Alaska from original dataframe
+
+dat<-rbind(AKcases[,2:7],dat) # merge dataframes
 
 ## select all cases by location
 unique(dat$state)
@@ -61,10 +65,11 @@ head(NYcases)
 
 # add region code column -----
 dat$region<-rep("000",dim(dat)[1])
+datos$region<-rep("000",dim(datos)[1])
 ## code 001 for west coast 
 t0<-data.frame(c("HI","AR","OR","WA","ID","LA","WY","MO",
                  "AZ","NM","TX","OK","KS","NV","UT","CO",
-                 "CA","NE","MT"))
+                 "CA","NE","MT","AK"))
 
 dat<-regioncode(t0,"001",dat)
 datos<-regioncode(t0,"001",datos) 
@@ -100,9 +105,10 @@ regioncode<-function(t0,code,tab){
 ##  find lat lon -----------
 library(ggmap)
 library(plyr)
-wzip<-dat[!NAzip & NAcity,]#find rows with zip but no city value
-wcity<-dat[!NAcity & NAzip,]# find rows with city value but no zip - 3100
-wzcity<-dat[!NAzip & !NAcity,]# find rows with city and zip - 1055
+wozcity<-dat[NAzip & NAcity,] #find rows with only state value -1824
+wzip<-dat[!NAzip & NAcity,]#find rows with zip but no city value - 109
+wcity<-dat[!NAcity & NAzip,]# find rows with city value but no zip - 656
+wzcity<-dat[!NAzip & !NAcity,]# find rows with city and zip - 946
 summary(wcity)
 summary(wzip)
 summary(wzcity)
@@ -113,34 +119,39 @@ gisdf2 <-geocode(paste(c("landfill"),wcity$city, wcity$state,"USA",sep=","))
 gisdf3 <-geocode(paste(c("landfill"),wzcity$city,wzcity$state, wzcity$zip,"USA",sep=","))
 
 # bind columns of lat lon
-wzipgis<-cbind(gisdf1,wzip)
-wcitygis<-cbind(gisdf2,wcity)
-wzcitygis<-cbind(gisdf3,wzcity)
+wzipgis<-cbind(wzip,gisdf1)
+wcitygis<-cbind(wcity,gisdf2)
+wzcitygis<-cbind(wzcity,gisdf3)
 
-geto<-rbind(wzipgis, wcitygis,wzcitygis) # bind all dataframes
+geto<-rbind(wzipgis, wcitygis) # bind all dataframes
 
 #plot lat lon pairs -----
-XYpairs <- data.frame(lon=geto$lon,lat=geto$lat,region=geto$region)
+XYpairs <- data.frame(lon=geto$lon,lat=geto$lat,region=geto$region, state=geto$state)
 plot(XYpairs)
 dim(XYpairs)
 
-Ypairs <-data.frame(lon=datos$lon,lat=datos$lat, size=datos$size, region=datos$region, stringsAsFactors = F)
+Ypairs <-data.frame(lon=datos$lon,lat=datos$lat, size=datos$size, 
+                    state=datos$state, stringsAsFactors = F)
+# test set
+YYpairs<-Ypairs[1:5,]
+XYYpairs<-XYpairs[1:5,]
 
 #split pairs by region 
-datos[grepl("001",dat$region),]
+region1s<-datos[grepl("001",datos$region),]
+region1t<-dat[grepl("001",dat$region),]
 
 # find distance between points -----
-routes<-data.frame(distance=rep(0,dim(XYpairs)[1]))
-for (y in 1:dimYpairs[1]){
-  for (x in 1:dim(XYpairs)[1]) {
-    from=as.numeric(Ypairs[y,1:2])
-    to=as.numeric(XYpairs[x,])
+routes<-data.frame(from.lon=NA,from.lat=NA,to.lon=NA,to.lat=NA,distance=NA,size=NA)
+for (y in 1:dim(YYpairs)[1]){
+  from = as.numeric(YYpairs[y,1:2])
+  for (x in 1:dim(XYYpairs)[1]) {
+    to = as.numeric(XYYpairs[x,])
     distance <- mapdist(from, to, mode="driving", output="simple")
-    routes$from.lon[x]<-from[1]
-    routes$from.lat[x]<-from[2]
-    routes$to.lon[x]<-to[1]
-    routes$to.lat[x]<-to[2]
-    routes$distance[x]<-distance$miles
+    newrow<-data.frame(from.lon = from[1],from.lat = from[2],
+                       to.lon = to[1], to.lat = to[2], 
+                       distance = distance$miles, size=YYpairs[y,"size"], from.state, to.state)
+    routes<-rbind(newrow, routes)
+    
     }
   }
 
