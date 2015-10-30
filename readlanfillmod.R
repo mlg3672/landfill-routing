@@ -47,7 +47,7 @@ unique(datos$state)
 # erase duplicated rows
 dat<-dat[!duplicated(dat),]
 
-# import Alaska data
+# import Alaska data - already geocoded
 AKcases<-read.csv("AK_landfills.csv",colClasses = "character")
 summary(AKcases)
 AKcases<-AKcases[c(1:18),c(2,7:12)]
@@ -57,6 +57,27 @@ dat<-dat[!grepl("AK",dat$state),] # delete Alaska from original dataframe
 
 dat<-rbind(AKcases[,2:7],dat) # merge dataframes
 
+#import WV data
+WVcases<-read.csv("WV_landfills.csv",colClasses = "character")
+summary(WVcases)
+WVgis<-geocode(paste(WVcases$address, "USA",sep=","))
+WVcases<-cbind(WVcases, WVgis)
+
+dat<-dat[!grepl("WV",dat$state),] # delete WV from original dataframe
+
+dat<-rbind(WVcases[,2:7],dat) # merge dataframes - doesnt work at lon lat cols to dat
+
+#import IL data
+ILcases<-read.csv("IL_landfills.csv",colClasses = "character")
+summary(ILcases)
+ILgis<-geocode(paste(ILcases$address, ILcases$city, ILcases$state, "USA",sep=","))
+ILcases<-cbind(ILcases,ILgis)
+AKcases<-AKcases[c(1:18),c(2,7:12)]
+colnames(AKcases)<- c("name","city","county","state","zip","lon","lat")
+
+dat<-dat[!grepl("AK",dat$state),] # delete Alaska from original dataframe
+
+dat<-rbind(AKcases[,2:7],dat) # merge dataframes
 ## select all cases by location
 unique(dat$state)
 NYcases<-dat[grepl("NY",dat$state),]
@@ -140,10 +161,10 @@ XYYpairs<-XYpairs[1:5,]
 XYYpairs<-XYpairs[grepl("001",XYpairs$region),]
 YYpairs<-Ypairs[grepl("001",Ypairs$region),]
 
-## reduce the number of points --------
+## reduce the number of points by elimination --------
 # due to limiation of gmap to 2000 queries 
 
-# find nearest point, eliminate most frequent
+# find nearest LF point, eliminate most frequent
 Nearest<-function(df) {
   nearest = 1000
   df$nearest<-0
@@ -169,15 +190,26 @@ Mode <- function(x) {
 }
 
 ReducePoints<-function(df){
+  # find the most popular points and delete
   while (dim(df)[1] > 10){
     df<-Nearest(df)
     m<-Mode(df$y.near)
     df<-df[-m,]
     plot(df$lon,df$lat)
   }
+}
+
+ReducePoints2<-function(df){
+  #find the 10 most remote points
+  df<-Nearest(df)
+  order(df,nearest,decreasing = T)
+  df<-df[1:10,]
+  plot(df$lon,df$lat)
   
 }
-  
+
+# reduce start points by combining ---- 
+
 # find distance between points -----
 routes<-data.frame(from.lon=NA,from.lat=NA,to.lon=NA,to.lat=NA,
                    distance=NA,size=NA,from.state=NA, to.state=NA)
