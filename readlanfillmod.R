@@ -47,7 +47,7 @@ unique(datos$state)
 # erase duplicated rows
 dat<-dat[!duplicated(dat),]
 
-# import Alaska data - already geocoded
+# import Alaska data -----
 AKcases<-read.csv("AK_landfills.csv",colClasses = "character")
 summary(AKcases)
 AKcases<-AKcases[c(1:18),c(2,7:12)]
@@ -57,7 +57,7 @@ dat<-dat[!grepl("AK",dat$state),] # delete Alaska from original dataframe
 
 dat<-rbind(AKcases[,2:7],dat) # merge dataframes
 
-#import WV data
+#import WV data -----
 WVcases<-read.csv("WV_landfills.csv",colClasses = "character")
 summary(WVcases)
 WVgis<-geocode(paste(WVcases$address, "USA",sep=","))
@@ -67,17 +67,21 @@ dat<-dat[!grepl("WV",dat$state),] # delete WV from original dataframe
 
 dat<-rbind(WVcases[,2:7],dat) # merge dataframes - doesnt work at lon lat cols to dat
 
-#import IL data
+#import IL data -----
 ILcases<-read.csv("IL_landfills.csv",colClasses = "character")
 summary(ILcases)
+ILcases<-ILcases[-40,]
 ILgis<-geocode(paste(ILcases$address, ILcases$city, ILcases$state, "USA",sep=","))
 ILcases<-cbind(ILcases,ILgis)
-AKcases<-AKcases[c(1:18),c(2,7:12)]
-colnames(AKcases)<- c("name","city","county","state","zip","lon","lat")
 
-dat<-dat[!grepl("AK",dat$state),] # delete Alaska from original dataframe
+# insert zip column
+ILcases<-data.frame(city = ILcases$city, county = ILcases$county,
+                    state = ILcases$state, zip=rep(NA,dim(ILcases)[1]), 
+                    lon = ILcases$lon, lat = ILcases$lat)
+dat<-dat[!grepl("IL",dat$state),] # delete IL from original dataframe
 
-dat<-rbind(AKcases[,2:7],dat) # merge dataframes
+dat<-rbind(ILcases[,2:6],dat) # merge dataframes
+
 ## select all cases by location
 unique(dat$state)
 NYcases<-dat[grepl("NY",dat$state),]
@@ -155,7 +159,7 @@ Ypairs <-data.frame(lon=datos$lon,lat=datos$lat, size=datos$size,
                     state=datos$state, region=datos$region, stringsAsFactors = F)
 # test set
 YYpairs<-Ypairs[1:5,]
-XYYpairs<-XYpairs[1:5,]
+XYYpairs<-XYpairs[1:15,]
 
 #split pairs by region 
 XYYpairs<-XYpairs[grepl("001",XYpairs$region),]
@@ -166,20 +170,22 @@ YYpairs<-Ypairs[grepl("001",Ypairs$region),]
 
 # find nearest LF point, eliminate most frequent
 Nearest<-function(df) {
+  # takes a data frame with x-lon and y-lat as first two columns
+  # finds the points at the nearest distance assuming planar
   nearest = 1000
   df$nearest<-0
   df$y.near<-0
   for (x in 1:dim(df)[1]) {
     newdf<-df[-x,]
     for ( y in 1:dim(newdf)[1]) {
-      distance<-sqrt((x[1]-y[1])^2+(x[2]-y[2])^2)
+      distance<-sqrt((df[x,1]-newdf[y,1])^2+(df[x,2]-newdf[y,2])^2)
       if (distance <= nearest) {
         nearest<- distance
         ynear<-y
       }
     }
-    df$nearest[x,]<-nearest
-    df$y.near[x,]<-ynear
+    df$nearest[x]<-nearest
+    df$y.near[x]<-ynear
   }
   return(df)
 }
@@ -191,24 +197,46 @@ Mode <- function(x) {
 
 ReducePoints<-function(df){
   # find the most popular points and delete
-  while (dim(df)[1] > 10){
+  while (dim(df)[1] > 3){
     df<-Nearest(df)
     m<-Mode(df$y.near)
     df<-df[-m,]
     plot(df$lon,df$lat)
   }
+  return(df)
 }
 
 ReducePoints2<-function(df){
   #find the 10 most remote points
   df<-Nearest(df)
-  order(df,nearest,decreasing = T)
-  df<-df[1:10,]
-  plot(df$lon,df$lat)
-  
+  cf<-df[order(df$nearest,decreasing = T),]
+  cf<-cf[1:3,]
+  plot(cf$lon,cf$lat)
+  return(cf)
 }
 
+# run 
+ReducePoints(XYYpairs)
+ReducePoints2(XYYpairs)
+
 # reduce start points by combining ---- 
+set.seed(100)
+CombinePoints<-function(df,n){
+  while (dim(df)[1] > 100){
+    df<-Nearest(df)
+    x<-sample(1:dim(df)[1],1)
+    w<-which(df$nearest,x)
+    #add size vectors to x
+    df<-df[-w,]
+    }
+  }
+
+CombinePoints(XYYpairs, n=100)  
+  
+# repeat until have less than x points
+# select random point
+# find nearest point
+# aggregate point
 
 # find distance between points -----
 routes<-data.frame(from.lon=NA,from.lat=NA,to.lon=NA,to.lat=NA,
