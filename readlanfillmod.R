@@ -226,20 +226,19 @@ CombinePoints<-function(df,n){
   while (dim(df)[1] > n){
     df<-Nearest(df)
     #x<-sample(1:dim(df)[1],1) choose random number method
-    cf<-df[order(df$nearest,decreasing = T),]
+    cf<-df[order(df$nearest,decreasing = F),]
     x<-cf[1,"y.near"]
-    print("first row is",str(cf[1,]))
-    print("nearest row is",str(cf[x,]))
+    #print("first row is",str(cf[1,]))
+    #print("nearest row is",str(cf[x,]))
     cf[x,"size"]<-as.numeric(cf[1,"size"])+as.numeric(cf[x,"size"])
-    print("new size is",str(cf[x,"size"]))
+    #print("new size is",str(cf[x,"size"]))
     df<-cf[-1,]
-    plot(as.numeric(df$lon),as.numeric(df$lat))
+    #plot(as.numeric(df$lon),as.numeric(df$lat))
     }
-  print("out of loop")
   return(df)
 }
 
-result<-CombinePoints(YYpairs, n=30)  
+result<-CombinePoints(YYpairs, n=4)  
   
 # repeat until have less than x points
 # select random point
