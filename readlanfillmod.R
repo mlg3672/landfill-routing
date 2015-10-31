@@ -233,13 +233,12 @@ CombinePoints<-function(df,n){
     cf[x,"size"]<-as.numeric(cf[1,"size"])+as.numeric(cf[x,"size"])
     #print("new size is",str(cf[x,"size"]))
     df<-cf[-1,]
-    #plot(as.numeric(df$lon),as.numeric(df$lat))
     }
   return(df)
 }
 
 result<-CombinePoints(YYpairs, n=4)  
-  
+plot(Ypairs[grepl("001",Ypairs$region),]$lon,Ypairs[grepl("001",Ypairs$region),]$lat)
 # repeat until have less than x points
 # select random point
 # find nearest point
