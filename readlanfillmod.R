@@ -158,7 +158,7 @@ dim(XYpairs)
 Ypairs <-data.frame(lon=datos$lon,lat=datos$lat, size=datos$size, 
                     state=datos$state, region=datos$region, stringsAsFactors = F)
 # test set
-YYpairs<-Ypairs[1:5,]
+YYpairs<-Ypairs[1:40,]
 XYYpairs<-XYpairs[1:15,]
 
 #split pairs by region 
@@ -178,7 +178,8 @@ Nearest<-function(df) {
   for (x in 1:dim(df)[1]) {
     newdf<-df[-x,]
     for ( y in 1:dim(newdf)[1]) {
-      distance<-sqrt((df[x,1]-newdf[y,1])^2+(df[x,2]-newdf[y,2])^2)
+      distance<-sqrt((as.numeric(df[x,"lon"])-as.numeric(newdf[y,"lon"]))^2
+                     +(as.numeric(df[x,"lat"])-as.numeric(newdf[y,"lat"]))^2)
       if (distance <= nearest) {
         nearest<- distance
         ynear<-y
@@ -222,16 +223,23 @@ ReducePoints2(XYYpairs)
 # reduce start points by combining ---- 
 set.seed(100)
 CombinePoints<-function(df,n){
-  while (dim(df)[1] > 100){
+  while (dim(df)[1] > n){
     df<-Nearest(df)
-    x<-sample(1:dim(df)[1],1)
-    w<-which(df$nearest,x)
-    #add size vectors to x
-    df<-df[-w,]
+    #x<-sample(1:dim(df)[1],1) choose random number method
+    cf<-df[order(df$nearest,decreasing = T),]
+    x<-cf[1,"y.near"]
+    print("first row is",str(cf[1,]))
+    print("nearest row is",str(cf[x,]))
+    cf[x,"size"]<-as.numeric(cf[1,"size"])+as.numeric(cf[x,"size"])
+    print("new size is",str(cf[x,"size"]))
+    df<-cf[-1,]
+    plot(as.numeric(df$lon),as.numeric(df$lat))
     }
-  }
+  print("out of loop")
+  return(df)
+}
 
-CombinePoints(XYYpairs, n=100)  
+result<-CombinePoints(YYpairs, n=30)  
   
 # repeat until have less than x points
 # select random point
