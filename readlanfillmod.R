@@ -228,17 +228,20 @@ CombinePoints<-function(df,n){
     #x<-sample(1:dim(df)[1],1) choose random number method
     cf<-df[order(df$nearest,decreasing = F),]
     x<-cf[1,"y.near"]
-    #print("first row is",str(cf[1,]))
+    print("first row is",str(cf[1,]))
     #print("nearest row is",str(cf[x,]))
     cf[x,"size"]<-as.numeric(cf[1,"size"])+as.numeric(cf[x,"size"])
     #print("new size is",str(cf[x,"size"]))
     df<-cf[-1,]
+    print("dim is",str(dim(df)[1]))
     }
   return(df)
 }
-
-result<-CombinePoints(YYpairs, n=4)  
-plot(Ypairs[grepl("001",Ypairs$region),]$lon,Ypairs[grepl("001",Ypairs$region),]$lat)
+datf<-Ypairs[grepl("004",Ypairs$region),]
+result<-CombinePoints(datf, n=200)  
+# 20 data points 0.438 sec
+#40 data points 2.7 sec
+plot(result$lon,result$lat)
 # repeat until have less than x points
 # select random point
 # find nearest point
