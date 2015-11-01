@@ -255,12 +255,12 @@ CombinePoints2 <-function(cl,df){
   # df is original df with size and lon lat data
   newdf<-data.frame(lon=as.numeric(),lat=as.numeric(),
                     size=as.numeric(),number=as.numeric())
-  for (x in cl$centers) {
+  for (x in 1:dim(cl$centers)[1]) {
     cf<-df[cl$cluster==x,]
     size<-sum(as.numeric(cf$size))
-    nos<-dim(cf)
-    newdf<-rbind(newdf, matrix(c(cl$centers[,1],cl$centers[,2],size, nos), ncol=3))
-    
+    nos<-dim(cf)[1]
+    newdf<-rbind(newdf, matrix(c(cl$centers[x,1],cl$centers[x,2],size, nos), ncol=4))
+    print("new row is",str(newdf[x,]))
   }
   colnames(newdf)<-c("lon","lat","size","number")
   return(newdf)
@@ -273,7 +273,7 @@ YpairsR4<-CombinePoints2(cl,datf)
 # count the aggregate points
 # get lat lon of center
 # assign size and number of points to center
-cl$centers in x
+
 
 # find distance between points -----
 routes<-data.frame(from.lon=NA,from.lat=NA,to.lon=NA,to.lat=NA,
