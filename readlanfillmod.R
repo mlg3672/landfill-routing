@@ -159,7 +159,7 @@ Ypairs <-data.frame(lon=datos$lon,lat=datos$lat, size=datos$size,
                     state=datos$state, region=datos$region, stringsAsFactors = F)
 # test set
 YYpairs<-Ypairs[1:1000,]
-XYYpairs<-XYpairs[1:15,]
+XYYpairs<-XYpairs[1:1000,]
 
 #split pairs by region 
 XYYpairs<-XYpairs[grepl("001",XYpairs$region),]
@@ -169,13 +169,20 @@ YYpairs<-Ypairs[grepl("001",Ypairs$region),]
 # due to limiation of gmap to 2000 queries 
 
 # find nearest LF point, eliminate most frequent
+require(geosphere)
+p1<-XYpairs[1,1:2]
+p2<-XYpairs[2,1:2]
+distGeo(p1,p2)
+nearest<-
+all<-distm(XYpairs[,1:2]) # use to produce nearest
 Nearest<-function(df) {
   # takes a data frame with x-lon and y-lat as first two columns
   # finds the points at the nearest distance assuming planar
-  nearest = 1000
+  
   df$nearest<-0
   df$y.near<-0
   for (x in 1:dim(df)[1]) {
+    nearest = 1000
     newdf<-df[-x,]
     for ( y in 1:dim(newdf)[1]) {
       distance<-sqrt((as.numeric(df[x,"lon"])-as.numeric(newdf[y,"lon"]))^2
@@ -196,9 +203,9 @@ Mode <- function(x) {
   ux[which.max(tabulate(match(x, ux)))]
 }
 
-ReducePoints<-function(df){
+ReducePoints<-function(df,x){
   # find the most popular points and delete
-  while (dim(df)[1] > 3){
+  while (dim(df)[1] > x){
     df<-Nearest(df)
     m<-Mode(df$y.near)
     df<-df[-m,]
@@ -207,18 +214,19 @@ ReducePoints<-function(df){
   return(df)
 }
 
-ReducePoints2<-function(df){
-  #find the 10 most remote points
+ReducePoints2<-function(df,x){
+  #find the x most remote points
   df<-Nearest(df)
   cf<-df[order(df$nearest,decreasing = T),]
-  cf<-cf[1:3,]
+  cf<-cf[1:x,]
   plot(cf$lon,cf$lat)
   return(cf)
 }
 
 # run 
-ReducePoints(XYYpairs)
-ReducePoints2(XYYpairs)
+ReducePoints(XYYpairs,x=3)
+plot(XYYpairs$lon,XYYpairs$lat)
+ReducePoints2(XYYpairs,x=10)
 
 # reduce start points by combining ---- 
 set.seed(100)
@@ -238,7 +246,7 @@ CombinePoints<-function(df,n){
   return(df)
 }
 datf<-Ypairs[grepl("004",Ypairs$region),]
-result<-CombinePoints(datf, n=200)  # takes more than two hours
+result<-CombinePoints(datf, n=200)  # takes more than two hours!! 
 
 #alternative approach to combine points
 require(graphics)
@@ -260,13 +268,12 @@ CombinePoints2 <-function(cl,df){
     size<-sum(as.numeric(cf$size))
     nos<-dim(cf)[1]
     newdf<-rbind(newdf, matrix(c(cl$centers[x,1],cl$centers[x,2],size, nos), ncol=4))
-    print("new row is",str(newdf[x,]))
   }
   colnames(newdf)<-c("lon","lat","size","number")
   return(newdf)
 }
 
-YpairsR4<-CombinePoints2(cl,datf)
+YpairsR4<-CombinePoints2(cl,datf) # combined PV locations df
 # for each center -
 # find associated groups
 # add size
