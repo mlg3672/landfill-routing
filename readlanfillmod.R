@@ -250,13 +250,30 @@ points(cl$centers, col = 1:2, pch = 8, cex = 2)
    # 20 data points 0.438 sec
 #40 data points 2.7 sec
 plot(result$lon,result$lat)
+CombinePoints2 <-function(cl,df){
+  # cl is kmeans output
+  # df is original df with size and lon lat data
+  newdf<-data.frame(lon=as.numeric(),lat=as.numeric(),
+                    size=as.numeric(),number=as.numeric())
+  for (x in cl$centers) {
+    cf<-df[cl$cluster==x,]
+    size<-sum(as.numeric(cf$size))
+    nos<-dim(cf)
+    newdf<-rbind(newdf, matrix(c(cl$centers[,1],cl$centers[,2],size, nos), ncol=3))
+    
+  }
+  colnames(newdf)<-c("lon","lat","size","number")
+  return(newdf)
+}
+
+YpairsR4<-CombinePoints2(cl,datf)
 # for each center -
 # find associated groups
 # add size
 # count the aggregate points
 # get lat lon of center
 # assign size and number of points to center
-
+cl$centers in x
 
 # find distance between points -----
 routes<-data.frame(from.lon=NA,from.lat=NA,to.lon=NA,to.lat=NA,
