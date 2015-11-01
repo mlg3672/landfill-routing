@@ -228,7 +228,7 @@ CombinePoints<-function(df,n){
     #x<-sample(1:dim(df)[1],1) choose random number method
     cf<-df[order(df$nearest,decreasing = F),]
     x<-cf[1,"y.near"]
-    print("first row is",str(cf[1,]))
+    #print("first row is",str(cf[1,]))
     #print("nearest row is",str(cf[x,]))
     cf[x,"size"]<-as.numeric(cf[1,"size"])+as.numeric(cf[x,"size"])
     #print("new size is",str(cf[x,"size"]))
@@ -238,7 +238,16 @@ CombinePoints<-function(df,n){
   return(df)
 }
 datf<-Ypairs[grepl("004",Ypairs$region),]
-result<-CombinePoints(datf, n=200)  
+result<-CombinePoints(datf, n=200)  # takes more than two hours
+
+#alternative approach to combine points
+require(graphics)
+x <- rbind(matrix(as.numeric(YYpairs$lon),ncol=2),
+           matrix(as.numeric(YYpairs$lat), ncol = 2))
+colnames(x) <- c("x", "y")
+(cl <- kmeans(x, 2))
+plot(x, col = cl$cluster)
+points(cl$centers, col = 1:2, pch = 8, cex = 2)
 # 20 data points 0.438 sec
 #40 data points 2.7 sec
 plot(result$lon,result$lat)
