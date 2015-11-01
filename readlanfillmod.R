@@ -158,7 +158,7 @@ dim(XYpairs)
 Ypairs <-data.frame(lon=datos$lon,lat=datos$lat, size=datos$size, 
                     state=datos$state, region=datos$region, stringsAsFactors = F)
 # test set
-YYpairs<-Ypairs[1:40,]
+YYpairs<-Ypairs[1:1000,]
 XYYpairs<-XYpairs[1:15,]
 
 #split pairs by region 
@@ -242,19 +242,21 @@ result<-CombinePoints(datf, n=200)  # takes more than two hours
 
 #alternative approach to combine points
 require(graphics)
-x <- rbind(matrix(as.numeric(YYpairs$lon),ncol=2),
-           matrix(as.numeric(YYpairs$lat), ncol = 2))
+x <- data.frame(lon=as.numeric(datf$lon), lat = as.numeric(datf$lat))
 colnames(x) <- c("x", "y")
-(cl <- kmeans(x, 2))
-plot(x, col = cl$cluster)
+(cl <- kmeans(x, 10))
+plot(x, col = cl$cluster)#ylim=c(36,41),xlim=c(-81,-73))
 points(cl$centers, col = 1:2, pch = 8, cex = 2)
-# 20 data points 0.438 sec
+   # 20 data points 0.438 sec
 #40 data points 2.7 sec
 plot(result$lon,result$lat)
-# repeat until have less than x points
-# select random point
-# find nearest point
-# aggregate point
+# for each center -
+# find associated groups
+# add size
+# count the aggregate points
+# get lat lon of center
+# assign size and number of points to center
+
 
 # find distance between points -----
 routes<-data.frame(from.lon=NA,from.lat=NA,to.lon=NA,to.lat=NA,
