@@ -234,34 +234,21 @@ ReducePoints2(XYYpairs,x=100)
 
 # reduce start points by combining ---- 
 set.seed(100)
-CombinePoints<-function(df,n){
-  while (dim(df)[1] > n){
-    df<-Nearest(df)
-    #x<-sample(1:dim(df)[1],1) choose random number method
-    cf<-df[order(df$nearest,decreasing = F),]
-    x<-cf[1,"y.near"]
-    #print("first row is",str(cf[1,]))
-    #print("nearest row is",str(cf[x,]))
-    cf[x,"size"]<-as.numeric(cf[1,"size"])+as.numeric(cf[x,"size"])
-    #print("new size is",str(cf[x,"size"]))
-    df<-cf[-1,]
-    print("dim is",str(dim(df)[1]))
-    }
-  return(df)
-}
-datf<-Ypairs[grepl("004",Ypairs$region),]
-result<-CombinePoints(datf, n=200)  # takes more than two hours!! 
-
-#alternative approach to combine points
 require(graphics)
+#cluster analysis
+datf<-Ypairs[grepl("004",Ypairs$region),] # assign region
 x <- data.frame(lon=as.numeric(datf$lon), lat = as.numeric(datf$lat))
-colnames(x) <- c("x", "y")
-(cl <- kmeans(x, 10))
+colnames(x) <- c("x", "y") #change column name
+(cl <- kmeans(x, 10)) # determine number of clusers
+
+#plot PV clusters and centers
 plot(x, col = cl$cluster)#ylim=c(36,41),xlim=c(-81,-73))
 points(cl$centers, col = 1:2, pch = 8, cex = 2)
-   # 20 data points 0.438 sec
-#40 data points 2.7 sec
-plot(result$lon,result$lat)
+
+#run function
+YpairsR4<-CombinePoints2(cl,datf) # combined PV locations df
+
+#function
 CombinePoints2 <-function(cl,df){
   # cl is kmeans output
   # df is original df with size and lon lat data
@@ -277,7 +264,7 @@ CombinePoints2 <-function(cl,df){
   return(newdf)
 }
 
-YpairsR4<-CombinePoints2(cl,datf) # combined PV locations df
+
 # for each center -
 # find associated groups
 # add size
