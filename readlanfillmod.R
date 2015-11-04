@@ -146,35 +146,35 @@ gisdf3 <-geocode(paste(c("landfill"),wzcity$city,wzcity$state, wzcity$zip,"USA",
 wcountygis<-cbind(wcounty,gisdf0)
 wzipgis<-cbind(wzip,gisdf1)
 wcitygis<-cbind(wcity,gisdf2)
-wzcitygis<-cbind(wzcity,gisdf3)
+wzcitygis<-cbind(wzcity,gisdf3) # run-->
 
 geto<-rbind(wzipgis, wcitygis,wzcitygis,wcountygis) # bind all dataframes
 
 #plot lat lon pairs -----
-XYpairs <- data.frame(lon=geto$lon,lat=geto$lat, state=geto$state, region=geto$region)
-plot(XYpairs$lon, XYpairs$lat)
-dim(XYpairs)
+endpoints <- data.frame(lon=geto$lon,lat=geto$lat, state=geto$state, region=geto$region)
+plot(endpoints$lon, endpoints$lat)
+dim(endpoints)
 
-Ypairs <-data.frame(lon=datos$lon,lat=datos$lat, size=datos$size, 
+allstart <-data.frame(lon=datos$lon,lat=datos$lat, size=datos$size, 
                     state=datos$state, region=datos$region, stringsAsFactors = F)
 # test set
-YYpairs<-Ypairs[1:1000,]
-XYYpairs<-XYpairs[1:1000,]
+substart<-allstart[1:1000,]
+subend<-endpoints[1:1000,]
 
 #split pairs by region 
-XYYpairs<-XYpairs[grepl("001",XYpairs$region),]
-YYpairs<-Ypairs[grepl("001",Ypairs$region),]
+subendR1<-endpoints[grepl("001",endpoints$region),]
+substartR1<-allstart[grepl("001",allstart$region),]
 
 ## reduce the number of points by elimination --------
 # due to limiation of gmap to 2000 queries 
 
 # find nearest LF point, eliminate most frequent
 require(geosphere)
-p1<-XYpairs[1,1:2]
-p2<-XYpairs[2,1:2]
+p1<-endpoints[1,1:2]
+p2<-endpoints[2,1:2]
 distGeo(p1,p2)# error could not find function
 
-all<-distm(XYpairs[1:2,1:2]) # produces matrix of as the crow flies distances
+all<-distm(endpoints[1:2,1:2]) # produces matrix of as the crow flies distances
 NAall<-is.na(all[1,]) # if use which.min not necessary
 NAall[1]<-T # if use which.min not necessary
 
@@ -199,7 +199,7 @@ Nearest<-function(df) {
     }
   return(df)
 }
-Nearest(XYYpairs[1:30,1:2])
+
 Mode <- function(x) {
   ux <- unique(x)
   ux[which.max(tabulate(match(x, ux)))]
@@ -228,15 +228,15 @@ ReducePoints2<-function(df,x){
 }
 
 # run 
-ReducePoints(XYYpairs,x=3)
-plot(XYYpairs$lon,XYYpairs$lat)
-ReducePoints2(XYYpairs,x=100)
+ReducePoints(subend,x=3)
+plot(subend$lon,subend$lat)
+subendR4<-ReducePoints2(subend,x=100)
 
 # reduce start points by combining ---- 
 set.seed(100)
 require(graphics)
 #cluster analysis
-datf<-Ypairs[grepl("004",Ypairs$region),] # assign region
+datf<-allstart[grepl("004",allstart$region),] # assign region
 x <- data.frame(lon=as.numeric(datf$lon), lat = as.numeric(datf$lat))
 colnames(x) <- c("x", "y") #change column name
 (cl <- kmeans(x, 10)) # determine number of clusers
@@ -246,7 +246,7 @@ plot(x, col = cl$cluster)#ylim=c(36,41),xlim=c(-81,-73))
 points(cl$centers, col = 1:2, pch = 8, cex = 2)
 
 #run combination function
-YpairsR4<-CombinePoints2(cl,datf) # combined PV locations df
+substartR4<-CombinePoints2(cl,datf) # combined PV locations df
 
 #combination function
 CombinePoints2 <-function(cl,df){
@@ -271,6 +271,9 @@ CombinePoints2 <-function(cl,df){
 
 
 # find distance between points -----
+#run
+FindRoutes(start=substartR4,end=R4end)
+#function
 FindRoutes<-function(start,end){
   routes<-data.frame(from.lon=NA,from.lat=NA,to.lon=NA,to.lat=NA,
                    distance=NA,size=NA,from.state=NA, to.state=NA)
