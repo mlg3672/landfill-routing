@@ -14,17 +14,17 @@ dat<-read.csv("uslandfill_mod.csv", colClasses="character")# reads destination  
 dato<-read.csv("openpv.csv", colClasses= "character") # read start points to df
 
 # clean data ----------------
-## set column names
+## set column names for LF
 colnames(dat)<- c("name","city","county","state","zip")
 dats<-dat[,1:5]
 dim(dats)
 
-## subset data
+## subset PV data
 datos<-dato[,c(2:3,6:8)]
 colnames(datos)<-c("state","size","lat","lon","zip")
 dim(datos)
 
-## check that all zip codes have 5 digits
+## check that all zip codes have 5 digits in LF
 dat[nchar(dat[,5])!=5,]#MA has 4 digits - fixed!
 
 ## find NA values
@@ -110,17 +110,20 @@ t0<-data.frame(c("RI", "GA", "SC", "TN", "MS","AL", "SC", "FL", "NC","MA"))
 dat<-regioncode(t0,"003",dat)
 datos<-regioncode(t0,"003",datos) 
 
-## code 004 for mid-atlantic 
+## run code 004 for mid-atlantic 
 t0<-data.frame(c("DC","VA","DE","MD"))
 dat<-regioncode(t0,"004",dat)
 datos<-regioncode(t0,"004",datos) 
 
-## code 005 for new england
+## run code 005 for new england
 t0<-data.frame(c("VT","NH","ME"))
 dat<-regioncode(t0,"005",dat)
 datos<-regioncode(t0,"005",datos) 
 
 regioncode<-function(t0,code,tab){
+  # t0 is a dataframe of strings,states in region
+  # code is a string which designates region
+  # tab is a dataframe which needs to be labeled 
   t1<-as.list(t(t0))
   t2<-paste(t1,collapse = "|")
   tab[grepl(t2,tab$state),]$region<-code
@@ -130,6 +133,16 @@ regioncode<-function(t0,code,tab){
 ##  find lat lon -----------
 library(ggmap)
 library(plyr)
+#region 4 only
+endR4<-dat[dat$state==c("DE","MD","VA","DC"),] 
+endR4gis<-geocode(paste(c("landfill"),endR4$county, endR4$state,"USA",sep=","))
+head(endR4)
+endR4<-cbind(endR4gis,endR4)
+plot(endR4$lon,endR4$lat)
+endR4<-endR4[!is.na(endR4$lon),]
+subendR4<-ReducePoints2(endR4,x=5)
+
+#all endpoints
 wnone<-dat[NAzip & NAcity & NAcounty,]# 3 states IL, WV, and AK
 wcounty<-dat[NAzip & NAcity & !NAcounty,] #find rows with only state value -1596
 wzip<-dat[!NAzip & NAcity,]#find rows with zip but no city value - 109
@@ -146,9 +159,9 @@ gisdf3 <-geocode(paste(c("landfill"),wzcity$city,wzcity$state, wzcity$zip,"USA",
 wcountygis<-cbind(wcounty,gisdf0)
 wzipgis<-cbind(wzip,gisdf1)
 wcitygis<-cbind(wcity,gisdf2)
-wzcitygis<-cbind(wzcity,gisdf3) # run-->
+wzcitygis<-cbind(wzcity,gisdf3) # run regioncode-->
 
-geto<-rbind(wzipgis, wcitygis,wzcitygis,wcountygis) # bind all dataframes
+geto<-rbind(wzipgis, wcitygis)#,wzcitygis)#,wcountygis) # bind all dataframes
 
 #plot lat lon pairs -----
 endpoints <- data.frame(lon=geto$lon,lat=geto$lat, state=geto$state, region=geto$region)
@@ -260,7 +273,7 @@ CombinePoints2 <-function(cl,df){
     nos<-dim(cf)[1]
     newdf<-rbind(newdf, matrix(c(cl$centers[x,1],cl$centers[x,2],size, nos), ncol=4))
   }
-  colnames(newdf)<-c("lon","lat","size","number")
+  colnames(newdf)<-c("lon","lat","size","number") # missing stae
   return(newdf)
 }
 
@@ -271,27 +284,38 @@ CombinePoints2 <-function(cl,df){
 
 
 # find distance between points -----
-#run
-FindRoutes(start=substartR4,end=R4end)
+require(plyr)
 #function
 FindRoutes<-function(start,end){
-  routes<-data.frame(from.lon=NA,from.lat=NA,to.lon=NA,to.lat=NA,
-                   distance=NA,size=NA,from.state=NA, to.state=NA)
+  routes<-data.frame(from.lon=as.numeric(),from.lat=as.numeric(),
+                     to.lon=as.numeric(),to.lat=as.numeric(),
+                   distance=as.numeric(),size=as.numeric(),
+                   from.state=as.character(), to.state=as.character())
   for (y in 1:dim(start)[1]){
-    from = as.numeric(start[y,1:2])
+    from<-as.numeric(start[y,1:2])
     for (x in 1:dim(end)[1]) {
-      to = as.numeric(end[x,1:2])
+      print("x is",str(x))
+      to<-as.numeric(end[x,1:2])
       distance <- mapdist(from, to, mode="driving", output="simple")
-      newrow<-data.frame(from.lon = from[1],from.lat = from[2],
-                         to.lon = to[1], to.lat = to[2], 
-                         distance = distance$miles, size=start[y,"size"], 
-                         from.state=start[x,]$state, to.state=end[y,]$state)
+      newrow<-matrix(c(from[1],
+                       from[2],
+                   to[1],
+                   to[2],
+                   distance$miles,
+                   start[y,"size"],
+                   "NA", 
+                   end[y,]$state),ncol=8)
+      
+      print(newrow)
       routes<-rbind(newrow, routes)
       }
   }
+  colnames(routes)<-c("from.lon","from.lat","to.lon","to.lat",
+                      "distance","size", "from.state", "to.state")
   return(routes)
   }
 
-
+#run
+routes<-FindRoutes(start=substartR4,end=subendR4)
 # write data to csv -----
 write.csv(x=routes,file="distance_lf.csv")
