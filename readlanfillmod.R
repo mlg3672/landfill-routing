@@ -172,32 +172,34 @@ YYpairs<-Ypairs[grepl("001",Ypairs$region),]
 require(geosphere)
 p1<-XYpairs[1,1:2]
 p2<-XYpairs[2,1:2]
-distGeo(p1,p2)
-nearest<-
-all<-distm(XYpairs[,1:2]) # use to produce nearest
+distGeo(p1,p2)# error could not find function
+
+all<-distm(XYpairs[1:2,1:2]) # produces matrix of as the crow flies distances
+NAall<-is.na(all[1,]) # if use which.min not necessary
+NAall[1]<-T # if use which.min not necessary
+
 Nearest<-function(df) {
   # takes a data frame with x-lon and y-lat as first two columns
   # finds the points at the nearest distance assuming planar
-  
-  df$nearest<-0
-  df$y.near<-0
+  df$nearest<-NA
+  df$y.near<-NA
+  matrix<-distm(df[,1:2]) # use to produce distance matrix
   for (x in 1:dim(df)[1]) {
-    nearest = 1000
-    newdf<-df[-x,]
-    for ( y in 1:dim(newdf)[1]) {
-      distance<-sqrt((as.numeric(df[x,"lon"])-as.numeric(newdf[y,"lon"]))^2
-                     +(as.numeric(df[x,"lat"])-as.numeric(newdf[y,"lat"]))^2)
-      if (distance <= nearest) {
-        nearest<- distance
-        ynear<-y
+    index<-which.min(matrix[x,-x]) # finds min index
+    if (!is.null(index)){
+      if (x <= index){
+        index<-index+1
+        df$y.near[x]<-index
+        }
+      else {
+        df$y.near[x]<-index
+        }
+      df$nearest[x]<-matrix[x,index]
       }
     }
-    df$nearest[x]<-nearest
-    df$y.near[x]<-ynear
-  }
   return(df)
 }
-
+Nearest(XYYpairs[1:30,1:2])
 Mode <- function(x) {
   ux <- unique(x)
   ux[which.max(tabulate(match(x, ux)))]
@@ -205,6 +207,7 @@ Mode <- function(x) {
 
 ReducePoints<-function(df,x){
   # find the most popular points and delete
+  df<-df[!is.na(df$lon),]
   while (dim(df)[1] > x){
     df<-Nearest(df)
     m<-Mode(df$y.near)
@@ -216,6 +219,7 @@ ReducePoints<-function(df,x){
 
 ReducePoints2<-function(df,x){
   #find the x most remote points
+  df<-df[!is.na(df$lon),]
   df<-Nearest(df)
   cf<-df[order(df$nearest,decreasing = T),]
   cf<-cf[1:x,]
@@ -226,7 +230,7 @@ ReducePoints2<-function(df,x){
 # run 
 ReducePoints(XYYpairs,x=3)
 plot(XYYpairs$lon,XYYpairs$lat)
-ReducePoints2(XYYpairs,x=10)
+ReducePoints2(XYYpairs,x=100)
 
 # reduce start points by combining ---- 
 set.seed(100)
