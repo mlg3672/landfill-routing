@@ -245,10 +245,10 @@ colnames(x) <- c("x", "y") #change column name
 plot(x, col = cl$cluster)#ylim=c(36,41),xlim=c(-81,-73))
 points(cl$centers, col = 1:2, pch = 8, cex = 2)
 
-#run function
+#run combination function
 YpairsR4<-CombinePoints2(cl,datf) # combined PV locations df
 
-#function
+#combination function
 CombinePoints2 <-function(cl,df){
   # cl is kmeans output
   # df is original df with size and lon lat data
@@ -265,29 +265,28 @@ CombinePoints2 <-function(cl,df){
 }
 
 
-# for each center -
-# find associated groups
-# add size
-# count the aggregate points
-# get lat lon of center
-# assign size and number of points to center
+# Pros : quick
+# Cons : centers are not actual points in data
+
 
 
 # find distance between points -----
-routes<-data.frame(from.lon=NA,from.lat=NA,to.lon=NA,to.lat=NA,
+FindRoutes<-function(start,end){
+  routes<-data.frame(from.lon=NA,from.lat=NA,to.lon=NA,to.lat=NA,
                    distance=NA,size=NA,from.state=NA, to.state=NA)
-for (y in 1:dim(YYpairs)[1]){
-  from = as.numeric(YYpairs[y,1:2])
-  for (x in 1:dim(XYYpairs)[1]) {
-    to = as.numeric(XYYpairs[x,1:2])
-    distance <- mapdist(from, to, mode="driving", output="simple")
-    newrow<-data.frame(from.lon = from[1],from.lat = from[2],
-                       to.lon = to[1], to.lat = to[2], 
-                       distance = distance$miles, size=YYpairs[y,"size"], 
-                       from.state=YYpairs[x,]$state, to.state=XYYpairs[y,]$state)
-    routes<-rbind(newrow, routes)
-    
-    }
+  for (y in 1:dim(start)[1]){
+    from = as.numeric(start[y,1:2])
+    for (x in 1:dim(end)[1]) {
+      to = as.numeric(end[x,1:2])
+      distance <- mapdist(from, to, mode="driving", output="simple")
+      newrow<-data.frame(from.lon = from[1],from.lat = from[2],
+                         to.lon = to[1], to.lat = to[2], 
+                         distance = distance$miles, size=start[y,"size"], 
+                         from.state=start[x,]$state, to.state=end[y,]$state)
+      routes<-rbind(newrow, routes)
+      }
+  }
+  return(routes)
   }
 
 
