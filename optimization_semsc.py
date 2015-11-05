@@ -14,17 +14,29 @@ import math
 # item = (name,origin, size)
 # destination 
 # price = distance
-item = [('001','BOS',50),
-          ('002','DAL',30),
-          ('003','CAK',50),
-          ('004','MIA',40),
-          ('005','ORD',60),
-          ('006','OMA',70)]
-
-capacity = {('001'):[150],
-          ('002'):[300]}
+#item = [('001','BOS',50),
+ #         ('002','DAL',30),
+ #         ('003','CAK',50),
+ #         ('004','MIA',40),
+ #         ('005','ORD',60),
+ #         ('006','OMA',70)]
+item = [("AAJ", 10859.348 ),
+        ("AAI",23278.949662),
+        ("AAH" ,8692.9),
+        ("AAG", 20906.12),
+        ("AAF" ,4604.964),
+        ("AAE" ,18203.811),
+        ("AAD" ,17360.872),
+        ("AAC" ,31590.422),
+        ("AAB",39549.43),
+        ("AAA",4154.589)]
+capacity = {('1'):[15e4],
+          ('2'):[300e4],
+           ('3'):[150e4],
+          ('4'):[300e4],
+           ('5'):[150e4]}
 # Laguardia
-destination='LGA'
+destination='RG4'#'LGA'
 
 routes={}
 # 
@@ -50,7 +62,7 @@ def printschedule(r):
         #print(d)
         name=item[d][0]
         #print(name)
-        origin=item[d][1]
+        origin=item[d][0]
         out=routes[(origin,destination)][int(r[d])]
         print('%10s%10s%10s %5s km%3s' % (name,origin,destination,
                                                   out[0],out[1]))
@@ -71,11 +83,11 @@ def schedulecost(sol):
     for d in range(int(len(sol))):
         # sol is the solution set, a list
         # Get the outbound routes
-        origin=item[d][1]
+        origin=item[d][0]
         outbound=routes[(origin,destination)][int(sol[d])]
         
         # get the size
-        size = item[d][2]
+        size = item[d][1]
         ## extract the destination id
         ent=outbound[0]
         weight[(ent)].append(int(size))
