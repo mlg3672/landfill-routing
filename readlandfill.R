@@ -1,13 +1,13 @@
 library(stringr)
 library(data.table)
 # set working directory
-setwd("~/Documents/Python-Projects/es-and-t")
+setwd("~/Documents/Python-Projects/landfill-routing")
 
 # the objective of this code is to read and clean landfill txt or table file
-txt <- readLines("uslandfills.txt") # this works
-header<-txt[1]
+txt <- readLines("uslandfills.txt") # reads each line as txt string
+header<-txt[1] # gets header
 tab<-read.table("uslandfills.txt", fill=T) # misread  incomplete columns
-datl<-fread("uslandfills.txt", sep=" ") # didnt process due to error on line 111
+datl<-fread("uslandfills.txt", sep=",") # worked put values in table
 
 # counts number of data selects out incomplete data
 c.fields = count.fields('uslandfills.txt')
