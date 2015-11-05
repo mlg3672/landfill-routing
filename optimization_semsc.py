@@ -14,12 +14,8 @@ import math
 # item = (name,origin, size)
 # destination 
 # price = distance
-#item = [('001','BOS',50),
- #         ('002','DAL',30),
- #         ('003','CAK',50),
- #         ('004','MIA',40),
- #         ('005','ORD',60),
- #         ('006','OMA',70)]
+#item = [('001','BOS',50), ('002','DAL',30), ('003','CAK',50),
+ #         ('004','MIA',40),('005','ORD',60), ('006','OMA',70)] # this is the demo list
 item = [("AAJ", 10859.348 ),
         ("AAI",23278.949662),
         ("AAH" ,8692.9),
@@ -40,12 +36,11 @@ destination='RG4'#'LGA'
 
 routes={}
 # 
-for line in open('schedule_semsc.txt'):
-    origin,dest,land,dist=line.strip().split(',')
+for line in open('schedule2R4.txt'):# demo file is'schedule_semsc.txt'
+    index,origin,dest,land,dist,size=line.strip().split(',')
     routes.setdefault((origin,dest),[])
-
     # Add details to the list of possible routes
-    routes[(origin,dest)].append((land,int(dist)))
+    routes[(origin,dest)].append((land,float(dist),float(size)))
 print(routes)
 
     
