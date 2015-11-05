@@ -299,12 +299,12 @@ FindRoutes<-function(start,end){
       distance <- mapdist(from, to, mode="driving", output="simple")
       newrow<-matrix(c(from[1],
                        from[2],
-                   to[1],
-                   to[2],
-                   distance$miles,
-                   start[y,"size"],
-                   "NA", 
-                   end[y,]$state),ncol=8)
+                       to[1],
+                       to[2],
+                       distance$miles,
+                       start[y,"size"],
+                       "NA", 
+                       end[y,]$state),ncol=8)
       
       print(newrow)
       routes<-rbind(newrow, routes)
@@ -315,7 +315,26 @@ FindRoutes<-function(start,end){
   return(routes)
   }
 
+# function to generate code for optimization program
+GenCodes<-function(start,end,routes){
+code<-data.frame(from=as.character(),to=as.character(),
+                 routeid=as.numeric(),distance=as.numeric(),
+                 size=as.numeric())
+for (x in 1:dim(start)[1]){
+  s<-paste0("AA",LETTERS[x])
+  for (y in 1:dim(end)[1]){
+    i<-(x-1)*dim(start)[1]+y
+    dist<-routes[i,]$distance
+    size<-routes[i,]$size
+    newrow<-matrix(c(s,"RG4",y,dist))
+    code<-rbind(newrow,code)
+    }
+  colnames(code)<-c("from","to","routeid","distance","size")
+  return(code)
+}}
 #run
 routes<-FindRoutes(start=substartR4,end=subendR4)
+code<-GenCodes(start=substartR4,end=subendR4, routes=routes)
 # write data to csv -----
-write.csv(x=routes,file="distance_lf.csv")
+write.csv(x=routes,file="scheduleR4.csv") #write to csv file
+write.table(routes, "schedule3R4.txt", quote=F,sep=",") # write to text file
