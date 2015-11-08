@@ -9,6 +9,9 @@
 ## Approach
 ### Part I. 
 mine data for all landfills and installation locations
+delineate locations into regions based on MSW import/export patterns
+reduce landfill points to ten per county
+reveal cluster pattern of pv in each region
 record shortest road distance between local points 
 make some assumptions about composition
 make some assumptions about recycling technology at each site
@@ -29,7 +32,8 @@ recycling technology - limited, 0-100%
 
 ### Part III. 
 scenario analysis - policies to influence climate impacts
-A. distributed vs. centralized network / boundaries: state, county, region
+A. distributed vs. centralized network 
+B. boundaries: state, county, region
 B. vehicle type 
 C. recycling technology mandates
 D. change in route - impact on vulnerable communities, traffic congestion, local ecosystems 
