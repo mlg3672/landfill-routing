@@ -42,4 +42,22 @@ Other questions:
 1. what is the current carbon footprint of each region, state, county? How does this change the balance?
 2. Is cooperation in routing necessary or beneficial?
 3. How does each region compare?
-4. 
+
+Goal : complete writing manuscript by Tuesday
+To Do:
+Tuesday 
+Monday start early!
+- add to methodology missing sections
+- plan graphics
+- quick literature review
+- things don’t need to be perfect just done
+- use python output to make a plot for region 4
+- does the python output make sense
+- how to visualize the output?
+- how to improve the code to make it work easier for updates?
+- do all regions with existing data
+- are any of the pv centers in weird locations?
+- should i update for future pv adoption?
+- make the s curve
+- clear conclusions
+- email Bose resume for sustainability corporate position 
