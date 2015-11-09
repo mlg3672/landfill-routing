@@ -26,11 +26,11 @@ item = [("AAJ", 10859.348 ),
         ("AAC" ,31590.422),
         ("AAB",39549.43),
         ("AAA",4154.589)]
-capacity = {('1'):[15e4],
+capacity = {('1'):[150e4],
           ('2'):[300e4],
            ('3'):[150e4],
           ('4'):[300e4],
-           ('5'):[150e4]}
+           ('5'):[15e4]}
 # Laguardia
 destination='RG4'#'LGA'
 
@@ -101,7 +101,7 @@ def schedulecost(sol):
     for i in capacity:
         if int(tot[i][0])>int(capacity[i][0]): 
             # penalize for overcapacity
-            capfee+=10000
+            capfee+=100000
         if int(tot[i][0])>0:
             # penalize for decentralization
             cenfee+=100
