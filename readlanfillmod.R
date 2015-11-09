@@ -1,4 +1,5 @@
 # the objective of this code is to read and get lat lon data from file of locations
+# then export to txt file for further analysis
 library(stringr)
 library(data.table)
 library(plyr)
@@ -6,10 +7,6 @@ library(plyr)
 setwd("~/Documents/Python-Projects/landfill-routing")
 
 # read data ---------------------
-txt <- readLines("uslandfill_mod.csv") # reads each line as txt string - not helpful
-header<-txt[1] # gets header
-tab<-read.table("uslandfill_mod.csv", fill=T) # misread  incomplete columns
-datl<-fread("uslandfill_mod.csv", sep=",") # worked put values in table lumps txt 
 dat<-read.csv("uslandfill_mod.csv", colClasses="character")# reads destination  points to df - best option !
 dato<-read.csv("openpv.csv", colClasses= "character") # read start points to df
 
@@ -27,11 +24,7 @@ dim(datos)
 ## check that all zip codes have 5 digits in LF
 dat[nchar(dat[,5])!=5,]#MA has 4 digits - fixed!
 
-## find NA values
-NAzip<-is.na(dat$zip)#2493
-NAstate<-is.na(dat$state)#0
-NAcity<-is.na(dat$city)#1939
-NAcounty<-is.na(dat$county) #476 AK only state with no city,zip or county - fixed!
+ #476 AK only state with no city,zip or county - fixed!
 
 # delete territories Puerto Rico "PR", Virgin Islands "VI", Guam "GU", "MP", "AS"
 dat<-dat[dat$state!="PR",]
@@ -44,6 +37,9 @@ unique(dat$state)
 datos<-datos[datos$state!="PR",]
 unique(datos$state)
 
+#change DC to MD
+datos[datos$state=="DC",1]<-"MD"
+
 # erase duplicated rows
 dat<-dat[!duplicated(dat),]
 
@@ -55,38 +51,30 @@ colnames(AKcases)<- c("name","city","county","state","zip","lon","lat")
 
 dat<-dat[!grepl("AK",dat$state),] # delete Alaska from original dataframe
 
-dat<-rbind(AKcases[,2:7],dat) # merge dataframes
+#later add data to df
+
 
 #import WV data -----
+dat<-dat[!grepl("WV",dat$state),] # delete WV from original dataframe
 WVcases<-read.csv("WV_landfills.csv",colClasses = "character")
 summary(WVcases)
-WVgis<-geocode(paste(WVcases$address, "USA",sep=","))
-WVcases<-cbind(WVcases, WVgis)
 
-dat<-dat[!grepl("WV",dat$state),] # delete WV from original dataframe
-
-dat<-rbind(WVcases[,2:7],dat) # merge dataframes - doesnt work at lon lat cols to dat
+dat<-rbind(WVcases[1:18,1:5],dat) # merge dataframes 
 
 #import IL data -----
+library(ggmap)
+library(plyr)
 ILcases<-read.csv("IL_landfills.csv",colClasses = "character")
 summary(ILcases)
 ILcases<-ILcases[-40,]
+ILcases$zip<-"NA"# insert zip column
 ILgis<-geocode(paste(ILcases$address, ILcases$city, ILcases$state, "USA",sep=","))
 ILcases<-cbind(ILcases,ILgis)
-
-# insert zip column
-ILcases<-data.frame(city = ILcases$city, county = ILcases$county,
-                    state = ILcases$state, zip=rep(NA,dim(ILcases)[1]), 
-                    lon = ILcases$lon, lat = ILcases$lat)
+colnames(ILcases)<- c("name","city","county","state","zip","lon","lat")
 dat<-dat[!grepl("IL",dat$state),] # delete IL from original dataframe
 
-dat<-rbind(ILcases[,2:6],dat) # merge dataframes
 
-## select all cases by location
-unique(dat$state)
-NYcases<-dat[grepl("NY",dat$state),]
-head(NYcases)
-# OR split(df, list(df$state), drop = TRUE) # split df by state abbrev
+
 
 # add region code column -----
 dat$region<-rep("000",dim(dat)[1])
@@ -133,35 +121,59 @@ regioncode<-function(t0,code,tab){
 ##  find lat lon -----------
 library(ggmap)
 library(plyr)
-#region 4 only
-endR4<-dat[dat$state==c("DE","MD","VA","DC"),] 
-endR4gis<-geocode(paste(c("landfill"),endR4$county, endR4$state,"USA",sep=","))
-head(endR4)
-endR4<-cbind(endR4gis,endR4)
-plot(endR4$lon,endR4$lat)
-endR4<-endR4[!is.na(endR4$lon),]
-subendR4<-ReducePoints2(endR4,x=5)
 
-#all endpoints
-wnone<-dat[NAzip & NAcity & NAcounty,]# 3 states IL, WV, and AK
-wcounty<-dat[NAzip & NAcity & !NAcounty,] #find rows with only state value -1596
-wzip<-dat[!NAzip & NAcity,]#find rows with zip but no city value - 109
-wcity<-dat[!NAcity & NAzip,]# find rows with city value but no zip - 656
-wzcity<-dat[!NAzip & !NAcity,]# find rows with city and zip - 946
 
-#geocode -----
-gisdf0<-geocode(paste(c("landfill"),wcounty$county, wcounty$state,"USA",sep=","))
-gisdf1 <-geocode(paste(wzip$state, wzip$zip,"USA",sep=","))
-gisdf2 <-geocode(paste(c("landfill"),wcity$city, wcity$state,"USA",sep=","))
-gisdf3 <-geocode(paste(c("landfill"),wzcity$city,wzcity$state, wzcity$zip,"USA",sep=","))
+# FindLatLong geocoding function
+FindLatLong<-function(df){
+  # takes a dataframe with city, county, state, zip columns
+  # determines missing information and geocodes
+  # returns geocoded matrix
+  
+  ## find NA values
+  NAzip<-is.na(df$zip)
+  NAstate<-is.na(df$state)
+  NAcity<-is.na(df$city)
+  NAcounty<-is.na(df$county)
+  
+  #select values
+  wnone<-df[NAzip & NAcity & NAcounty,]# rows with no values
+  wcounty<-df[NAzip & NAcity & !NAcounty,] #find rows with only county
+  wzip<-df[!NAzip & NAcity,]#find rows with zip but no city value
+  wcity<-df[!NAcity & NAzip,]# find rows with city value but no zip 
+  wzcity<-df[!NAzip & !NAcity,]# find rows with city and zip 
+  
+  #geocode -----
+  gisdf0<-geocode(paste(c("landfill"),wcounty$county, wcounty$state,"USA",sep=","))
+  gisdf1 <-geocode(paste(wzip$state, wzip$zip,"USA",sep=","))
+  gisdf2 <-geocode(paste(c("landfill"),wcity$city, wcity$state,"USA",sep=","))
+  gisdf3 <-geocode(paste(c("landfill"),wzcity$city,wzcity$state, wzcity$zip,"USA",sep=","))
+  
+  # bind columns of lat lon
+  wcountygis<-cbind(wcounty,gisdf0)
+  wzipgis<-cbind(wzip,gisdf1)
+  wcitygis<-cbind(wcity,gisdf2)
+  wzcitygis<-cbind(wzcity,gisdf3)
+  
+  geto<-rbind(wcountygis,wzipgis, wcitygis,wzcitygis) # bind all dataframes
+  return(geto)
+}
 
-# bind columns of lat lon
-wcountygis<-cbind(wcounty,gisdf0)
-wzipgis<-cbind(wzip,gisdf1)
-wcitygis<-cbind(wcity,gisdf2)
-wzcitygis<-cbind(wzcity,gisdf3) # run regioncode-->
+# region geocode, plot, reduce
+endR1<-dat[dat$state==c("HI","AR","OR","WA","ID","LA","WY","MO",
+                        "AZ","NM","TX","OK","KS","NV","UT","CO",
+                        "CA","NE","MT","AK"),] 
+endR1gis<-FindLatLong(endR1) # geocode
+plot(endR1$lon,endR1$lat) # plot region locations
+endR1<-endR1[!is.na(endR1$lon),] # eliminate NA values
+subendR1<-ReducePoints2(endR1,x=5) # reduce points
 
-geto<-rbind(wzipgis, wcitygis)#,wzcitygis)#,wcountygis) # bind all dataframes
+ # run regioncode-->
+
+
+
+# add AK, IL data already geocoded
+dat<-rbind(AKcases[,2:7],dat) # merge AK data
+dat<-rbind(ILcases[,2:6],dat) # merge IL data
 
 #plot lat lon pairs -----
 endpoints <- data.frame(lon=geto$lon,lat=geto$lat, state=geto$state, region=geto$region)
@@ -342,4 +354,4 @@ code<-GenCodes(start=substartR4,end=subendR4, routes=routes)
 # write data to csv -----
 write.csv(x=routes,file="scheduleR4.csv") #write to csv file
 write.table(routes, "schedule3R4.txt", quote=F,sep=",") # write to text file
-write.table(code, "schedule3R4.txt", quote=F,sep=",") # write to text file
+write.table(code, "schedule2R4.txt", quote=F,sep=",") # write to text file
