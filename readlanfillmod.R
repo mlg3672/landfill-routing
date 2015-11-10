@@ -1,4 +1,5 @@
 # the objective of this code is to read and get lat lon data from file of locations
+# then combine start and end points based on location 
 # then export to txt file for further analysis
 library(stringr)
 library(data.table)
@@ -23,8 +24,6 @@ dim(datos)
 
 ## check that all zip codes have 5 digits in LF
 dat[nchar(dat[,5])!=5,]#MA has 4 digits - fixed!
-
- #476 AK only state with no city,zip or county - fixed!
 
 # delete territories Puerto Rico "PR", Virgin Islands "VI", Guam "GU", "MP", "AS"
 dat<-dat[dat$state!="PR",]
@@ -51,9 +50,6 @@ colnames(AKcases)<- c("name","city","county","state","zip","lon","lat")
 
 dat<-dat[!grepl("AK",dat$state),] # delete Alaska from original dataframe
 
-#later add data to df
-
-
 #import WV data -----
 dat<-dat[!grepl("WV",dat$state),] # delete WV from original dataframe
 WVcases<-read.csv("WV_landfills.csv",colClasses = "character")
@@ -73,10 +69,9 @@ ILcases<-cbind(ILcases,ILgis)
 colnames(ILcases)<- c("name","city","county","state","zip","lon","lat")
 dat<-dat[!grepl("IL",dat$state),] # delete IL from original dataframe
 
-##  find lat lon -----------
+
 library(ggmap)
 library(plyr)
-
 
 # FindLatLong geocoding function
 FindLatLong<-function(df){
@@ -113,77 +108,6 @@ FindLatLong<-function(df){
   return(geto)
 }
 
-# rearrange PV data columns
-allstart <-data.frame(lon=datos$lon,lat=datos$lat, size=datos$size, 
-                      state=datos$state, stringsAsFactors = F)
-# region 1 geocode, reduce pts ----
-endR1<-dat[dat$state %in% c("HI","AR","OR","WA","ID","LA","WY","MO",
-                        "AZ","NM","TX","OK","KS","NV","UT","CO",
-                        "CA","NE","MT","AK"),] 
-endR1gis<-FindLatLong(endR1) # geocode
-endR1gis<-cbind(endR1gis,endR1) # merge gis data
-endR1gis<-rbind(AKcases,endR1gis) # merge AK data
-plot(endR1gis$lon,endR1gis$lat) # plot locations
-
-subendR1<-ReducePoints2(endR1gis,x=10) # reduce points
-plot(subendR1$lon,subendR1$lat)
-
-startR1<-FindClusters(subendR1,n=10)
-substartR1<-CombinePoints2(cl,startR1) # combined PV locations df
-
-startR1<-allstart[allstart$state %in% c("HI","AR","OR","WA","ID","LA","WY","MO",
-                                    "AZ","NM","TX","OK","KS","NV","UT","CO",
-                                    "CA","NE","MT","AK"),] # split pv by region
-# region 2 geocode --------
-endR2<-dat[dat$state %in% c("IA", "IL", "CT","SD", "NY", "NJ", "IN", 
-                        "WI", "WV","ND", "MN", "MI", "KY", "OH", 
-                        "PA", "TN", "MS"),] 
-endR2gis<-FindLatLong(endR2) # geocode
-endR2gis<-cbind(endR2gis,endR2) # merge gis dat
-endR2gis<-rbind(endR2gis,ILcases) # merge IL data
-plot(endR2gis$lon,endR2gis$lat) # plot locations
-
-subendR2<-ReducePoints2(endR2gis,x=10) # reduce points
-plot(subendR2$lon,subendR2$lat)
-
-startR2<-allstart[allstart$state %in% c("IA", "IL", "CT","SD", "NY", "NJ", "IN", 
-                                        "WI", "WV","ND", "MN", "MI", "KY", "OH", 
-                                        "PA", "TN", "MS"),] # split pv by region
-# region 3 geocode --------
-endR3<-dat[dat$state %in% c("RI", "GA", "SC", "TN", "MS","AL", "SC", "FL", "NC","MA"),] 
-endR3gis<-FindLatLong(endR3) # geocode
-endR3gis<-cbind(endR3gis,endR3) # merge gis data
-plot(endR3gis$lon,endR3gis$lat) # plot locations
-
-subendR3<-ReducePoints2(endR3gis,x=10) # reduce points
-plot(subendR3$lon,subendR3$lat)
-
-startR3<-allstart[allstart$state %in% c("RI", "GA", "SC", "TN", "MS",
-                                        "AL", "SC", "FL", "NC","MA"),] # split pv by region
-# region 4 geocode --------
-endR4<-dat[dat$state %in% c("DC","VA","DE","MD"),] 
-endR4gis<-FindLatLong(endR4) # geocode
-endR4gis<-cbind(endR4gis,endR4) # merge gis data
-plot(endR4gis$lon,endR4gis$lat) # plot locations
-
-subendR4<-ReducePoints2(endR4gis,x=10) # reduce points
-plot(subendR4$lon,subendR4$lat)
-
-startR4<-allstart[allstart$state %in% c("DC","VA","DE","MD"),] # split pv by region
-# region 5 geocode --------
-endR5<-dat[dat$state %in% c("VT","NH","ME"),] 
-endR5gis<-FindLatLong(endR5) # geocode
-endR5gis<-cbind(endR5gis,endR5) # merge gis dat
-plot(endR5gis$lon,endR5gis$lat) # plot locations
-
-subendR5<-ReducePoints2(endR5gis,x=10) # reduce points
-plot(subendR5$lon,subendR5$lat)
-
-startR5<-allstart[allstart$state %in% c("VT","NH","ME"),] # split pv by region
-
-
-
-#endR1g<-endR1gis[!is.na(endR1gis$lon),] # eliminate NA values
 
 
 # add AK, IL data already geocoded 
@@ -246,15 +170,12 @@ ReducePoints2<-function(df,x){
   return(cf)
 }
 
-# run 
-
-
-# reduce start points by combining ---- 
+ 
 set.seed(100)
 require(graphics)
-#cluster analysis - use startR1 df
 
 FindClusters<- function(df,n){
+  # cluster analysis
   # n is the number of clusters
   x <- data.frame(lon=as.numeric(df$lon), lat = as.numeric(df$lat))
   colnames(x) <- c("x", "y") #change column name
@@ -289,15 +210,7 @@ CombinePoints2 <-function(cl,df){
   return(newdf)
 }
 
-#run combination function
 
-
-# Pros : quick
-# Cons : centers are not actual points in data
-
-
-
-# find distance between points -----
 require(plyr)
 #function
 FindRoutes<-function(start,end){
@@ -353,10 +266,116 @@ GenCodes<-function(start,end,routes){
   colnames(code)<-c("from","to","routeid","routekm","clusterkm","size","installs")
   return(code)
   }
-#run
-routes<-FindRoutes(start=substartR1,end=subendR1)
-code<-GenCodes(start=substartR1,end=subendR1, routes=routes)
-# write data to csv -----
-write.csv(x=routes,file="scheduleR4.csv") #write to csv file
-write.table(routes, "schedule3R1.txt", quote=F,sep=",") # write to text file
-write.table(code, "schedule2R1.txt", quote=F,sep=",") # write to text file
+
+WriteData<-function(routes,code,r){
+  fname<-paste0("scheduleR",r,".csv")
+  fname2<-paste0("scheduleR2",r,".csv")
+  fname3<-paste0("scheduleR3",r,".csv")
+  write.csv(x=routes,fname) #write routes to csv file
+  write.table(routes, fname2, quote=F,sep=",") # write routes to text file
+  write.table(code, fname3, quote=F,sep=",") # write code to text file
+}
+
+# rearrange PV data columns
+allstart <-data.frame(lon=datos$lon,lat=datos$lat, size=datos$size, 
+                      state=datos$state, stringsAsFactors = F)
+
+# region 1 geocode, endpts ----
+endR1<-dat[dat$state %in% c("HI","AR","OR","WA","ID","LA","WY","MO",
+                            "AZ","NM","TX","OK","KS","NV","UT","CO",
+                            "CA","NE","MT","AK"),] 
+endR1gis<-FindLatLong(endR1) # geocode
+endR1gis<-cbind(endR1gis,endR1) # merge gis end data
+endR1gis<-rbind(AKcases,endR1gis) # merge AK end data
+plot(endR1gis$lon,endR1gis$lat) # plot end locations
+
+subendR1<-ReducePoints2(endR1gis,x=10) # reduce endpoints
+plot(subendR1$lon,subendR1$lat)
+
+
+startR1<-allstart[allstart$state %in% c("HI","AR","OR","WA","ID","LA","WY","MO",
+                                        "AZ","NM","TX","OK","KS","NV","UT","CO",
+                                        "CA","NE","MT","AK"),] # split pv by region
+cl<-FindClusters(startR1,n=10) # cluster anlaysis on pv
+substartR1<-CombinePoints2(cl,startR1) # combin PV locations
+
+routes1<-FindRoutes(start=substartR1,end=subendR1) # find routes
+code1<-GenCodes(start=substartR1,end=subendR1, routes=routes1) # get codes
+WriteData(routes1,code1,r=1)# write to text files
+
+# region 2 geocode --------
+endR2<-dat[dat$state %in% c("IA", "IL", "CT","SD", "NY", "NJ", "IN", 
+                            "WI", "WV","ND", "MN", "MI", "KY", "OH", 
+                            "PA", "TN", "MS"),] 
+endR2gis<-FindLatLong(endR2) # geocode
+endR2gis<-cbind(endR2gis,endR2) # merge gis dat
+endR2gis<-rbind(endR2gis,ILcases) # merge IL data
+plot(endR2gis$lon,endR2gis$lat) # plot locations
+
+subendR2<-ReducePoints2(endR2gis,x=10) # reduce points
+plot(subendR2$lon,subendR2$lat)
+
+
+startR2<-allstart[allstart$state %in% c("IA", "IL", "CT","SD", "NY", "NJ", "IN", 
+                                        "WI", "WV","ND", "MN", "MI", "KY", "OH", 
+                                        "PA", "TN", "MS"),] # split pv by region
+cl<-FindClusters(startR2,n=10) # cluster anlaysis on pv
+substartR2<-CombinePoints2(cl,startR2) # combin PV locations
+
+routes2<-FindRoutes(start=substartR2,end=subendR2) # find routes
+code2<-GenCodes(start=substartR2,end=subendR2, routes=routes2) # get codes
+WriteData(routes2,code2,r=2)# write to text files
+
+# region 3 geocode --------
+endR3<-dat[dat$state %in% c("RI", "GA", "SC", "TN", "MS","AL", "SC", "FL", "NC","MA"),] 
+endR3gis<-FindLatLong(endR3) # geocode
+endR3gis<-cbind(endR3gis,endR3) # merge gis data
+plot(endR3gis$lon,endR3gis$lat) # plot locations
+
+subendR3<-ReducePoints2(endR3gis,x=10) # reduce points
+plot(subendR3$lon,subendR3$lat)
+
+startR3<-allstart[allstart$state %in% c("RI", "GA", "SC", "TN", "MS",
+                                        "AL", "SC", "FL", "NC","MA"),] # split pv by region
+cl<-FindClusters(startR3,n=10) # cluster anlaysis on pv
+substartR3<-CombinePoints2(cl,startR3) # combin PV locations
+
+routes3<-FindRoutes(start=substartR3,end=subendR3) # find routes
+code3<-GenCodes(start=substartR3,end=subendR3, routes=routes3) # get codes
+WriteData(routes3,code3,r=3)# write to text files
+
+# region 4 geocode --------
+endR4<-dat[dat$state %in% c("DC","VA","DE","MD"),] 
+endR4gis<-FindLatLong(endR4) # geocode
+endR4gis<-cbind(endR4gis,endR4) # merge gis data
+plot(endR4gis$lon,endR4gis$lat) # plot locations
+
+subendR4<-ReducePoints2(endR4gis,x=10) # reduce points
+plot(subendR4$lon,subendR4$lat)
+
+startR4<-allstart[allstart$state %in% c("DC","VA","DE","MD"),] # split pv by region
+cl<-FindClusters(startR4,n=10) # cluster anlaysis on pv
+substartR4<-CombinePoints2(cl,startR4) # combin PV locations
+
+routes4<-FindRoutes(start=substartR4,end=subendR4) # find routes
+code4<-GenCodes(start=substartR4,end=subendR4, routes=routes4) # get codes
+WriteData(routes4,code4,r=4)# write to text files
+
+# region 5 geocode --------
+endR5<-dat[dat$state %in% c("VT","NH","ME"),] 
+endR5gis<-FindLatLong(endR5) # geocode
+endR5gis<-cbind(endR5gis,endR5) # merge gis dat
+plot(endR5gis$lon,endR5gis$lat) # plot locations
+
+subendR5<-ReducePoints2(endR5gis,x=10) # reduce points
+plot(subendR5$lon,subendR5$lat)
+
+startR5<-allstart[allstart$state %in% c("VT","NH","ME"),] # split pv by region
+cl<-FindClusters(startR5,n=10) # cluster anlaysis on pv
+substartR5<-CombinePoints2(cl,startR5) # combin PV locations
+
+routes5<-FindRoutes(start=substartR5,end=subendR5) # find routes
+code5<-GenCodes(start=substartR5,end=subendR5, routes=routes5) # get codes
+WriteData(routes5,code5,r=5)# write to text files
+
+#endR1g<-endR1gis[!is.na(endR1gis$lon),] # eliminate NA values
