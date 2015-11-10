@@ -170,7 +170,14 @@ ReducePoints2<-function(df,x){
   return(cf)
 }
 
- 
+EraseOutliers<-function(outliers,df){
+  # function to eliminate outliers
+  for (d in outliers$lon){
+    df<-df[!mapply(grepl,d,df$lon),]
+  }
+  return(df)
+}
+
 set.seed(100)
 require(graphics)
 
@@ -308,13 +315,18 @@ endR2<-dat[dat$state %in% c("IA", "IL", "CT","SD", "NY", "NJ", "IN",
                             "WI", "WV","ND", "MN", "MI", "KY", "OH", 
                             "PA", "TN", "MS"),] 
 endR2gis<-FindLatLong(endR2) # geocode
-endR2gis<-cbind(endR2gis,endR2) # merge gis dat
+
 endR2gis<-rbind(endR2gis,ILcases) # merge IL data
 plot(endR2gis$lon,endR2gis$lat) # plot locations
+endR2gis<-endR2gis[!is.na(endR2gis$lon),] # eliminate NA values
+endR2g<-data.frame(lon=endR2gis$lon,lat=endR2gis$lat, 
+           state=endR2gis$state, stringsAsFactors = F) #rearrange columns
 
-subendR2<-ReducePoints2(endR2gis,x=10) # reduce points
-plot(subendR2$lon,subendR2$lat)
+subendR2<-ReducePoints2(endR2g,x=10) # identify outliers, repeat to reduce pts
 
+endR2g<-EraseOutliers(subendR2,endR2g) # eliminate outliers from df
+
+plot(endR2g$lon,endR2g$lat) # plot 
 
 startR2<-allstart[allstart$state %in% c("IA", "IL", "CT","SD", "NY", "NJ", "IN", 
                                         "WI", "WV","ND", "MN", "MI", "KY", "OH", 
@@ -329,11 +341,16 @@ WriteData(routes2,code2,r=2)# write to text files
 # region 3 geocode --------
 endR3<-dat[dat$state %in% c("RI", "GA", "SC", "TN", "MS","AL", "SC", "FL", "NC","MA"),] 
 endR3gis<-FindLatLong(endR3) # geocode
-endR3gis<-cbind(endR3gis,endR3) # merge gis data
+
 plot(endR3gis$lon,endR3gis$lat) # plot locations
 
-subendR3<-ReducePoints2(endR3gis,x=10) # reduce points
-plot(subendR3$lon,subendR3$lat)
+endR3gis<-endR3gis[!is.na(endR3gis$lon),] # eliminate NA values
+endR3g<-data.frame(lon=endR3gis$lon,lat=endR3gis$lat, 
+                   state=endR3gis$state, stringsAsFactors = F) #rearrange columns
+
+subendR3<-ReducePoints3(endR3g,x=10) # identify outliers, repeat to reduce pts
+
+endR3g<-EraseOutliers(subendR3,endR3g) # eliminate outliers from df
 
 startR3<-allstart[allstart$state %in% c("RI", "GA", "SC", "TN", "MS",
                                         "AL", "SC", "FL", "NC","MA"),] # split pv by region
@@ -347,11 +364,16 @@ WriteData(routes3,code3,r=3)# write to text files
 # region 4 geocode --------
 endR4<-dat[dat$state %in% c("DC","VA","DE","MD"),] 
 endR4gis<-FindLatLong(endR4) # geocode
-endR4gis<-cbind(endR4gis,endR4) # merge gis data
+
 plot(endR4gis$lon,endR4gis$lat) # plot locations
 
-subendR4<-ReducePoints2(endR4gis,x=10) # reduce points
-plot(subendR4$lon,subendR4$lat)
+endR4gis<-endR4gis[!is.na(endR4gis$lon),] # eliminate NA values
+endR4g<-data.frame(lon=endR4gis$lon,lat=endR4gis$lat, 
+                   state=endR4gis$state, stringsAsFactors = F) #rearrange columns
+
+subendR4<-ReducePoints4(endR4g,x=10) # identify outliers, repeat to reduce pts
+
+endR4g<-EraseOutliers(subendR4,endR4g) # eliminate outliers from df
 
 startR4<-allstart[allstart$state %in% c("DC","VA","DE","MD"),] # split pv by region
 cl<-FindClusters(startR4,n=10) # cluster anlaysis on pv
@@ -364,11 +386,16 @@ WriteData(routes4,code4,r=4)# write to text files
 # region 5 geocode --------
 endR5<-dat[dat$state %in% c("VT","NH","ME"),] 
 endR5gis<-FindLatLong(endR5) # geocode
-endR5gis<-cbind(endR5gis,endR5) # merge gis dat
+
 plot(endR5gis$lon,endR5gis$lat) # plot locations
 
-subendR5<-ReducePoints2(endR5gis,x=10) # reduce points
-plot(subendR5$lon,subendR5$lat)
+endR5gis<-endR5gis[!is.na(endR5gis$lon),] # eliminate NA values
+endR5g<-data.frame(lon=endR5gis$lon,lat=endR5gis$lat, 
+                   state=endR5gis$state, stringsAsFactors = F) #rearrange columns
+
+subendR5<-ReducePoints5(endR5g,x=10) # identify outliers, repeat to reduce pts
+
+endR5g<-EraseOutliers(subendR5,endR5g) # eliminate outliers from df
 
 startR5<-allstart[allstart$state %in% c("VT","NH","ME"),] # split pv by region
 cl<-FindClusters(startR5,n=10) # cluster anlaysis on pv
