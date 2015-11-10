@@ -43,6 +43,14 @@ for line in open('schedule2R4.txt'):# demo file is'schedule_semsc.txt'
     routes[(origin,dest)].append((land,float(dist),float(size)))
 print(routes)
 
+locations={}
+# 
+for line in open('schedule3R4.txt'):# demo file is'schedule_semsc.txt'
+    nos,f_lon,f_lat,to_lon,to_lat,distance,size,f_state,to_state=line.strip().split(',')
+    routes.setdefault((f_lon,f_lat),[])
+    # Add details to the list of possible routes
+    routes[(f_lon,f_lat)].append((float(to_lon),float(to_lat),float(distance),float(size)))
+print(locations)
     
 #domain= {}
 #domain=[(0,len(capacity)-1)]*len((item)*1) 
@@ -62,7 +70,10 @@ def printschedule(r):
         print('%10s%10s%10s %5s km%3s' % (name,origin,destination,
                                                   out[0],out[1]))
                                                   
-
+def plotschedule(r):
+    #input schedule for outbound route of each item 
+    for d in range(int(len(r)):
+                   
 def schedulecost(sol):
     totalprice=0
     capfee=0
