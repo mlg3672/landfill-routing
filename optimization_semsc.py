@@ -1,6 +1,10 @@
 import time
 import random
 import math
+import pandas as pd
+from mpl_toolkits.basemap import Basemap
+import matplotlib.pyplot as plt
+import numpy as np
 # to do : 1. add func to generate domain - done 10/7
 #         2. split the mass to send to two diff destinations 
 #            A. assume flow between transfer station and LF destination
@@ -47,9 +51,9 @@ locations={}
 # 
 for line in open('schedule3R4.txt'):# demo file is'schedule_semsc.txt'
     nos,f_lon,f_lat,to_lon,to_lat,distance,size,f_state,to_state=line.strip().split(',')
-    routes.setdefault((f_lon,f_lat),[])
+    locations.setdefault((f_lon,f_lat),[])
     # Add details to the list of possible routes
-    routes[(f_lon,f_lat)].append((float(to_lon),float(to_lat),float(distance),float(size)))
+    locations[(f_lon,f_lat)].append((float(to_lon),float(to_lat),float(distance),float(size)))
 print(locations)
     
 #domain= {}
@@ -62,18 +66,37 @@ def getminutes(t):
 def printschedule(r):
     # input schedule for outbound route of each item
     for d in range(int(len(r))):
-        #print(d)
+        print(d)
         name=item[d][0]
-        #print(name)
+        print(name)
         origin=item[d][0]
         out=routes[(origin,destination)][int(r[d])]
         print('%10s%10s%10s %5s km%3s' % (name,origin,destination,
                                                   out[0],out[1]))
                                                   
 def plotschedule(r):
+    lats = []
+    lons = []
     #input schedule for outbound route of each item 
-    for d in range(int(len(r)):
-                   
+    for d in range(int(len(r))):
+        lats.append(locations[(f_lon,f_lat)][int(r[d])][0])
+        lons.append(locations[(f_lon,f_lat)][int(r[d])][1])
+        print(lats,lons) 
+    # Create a map, using the Gall–Peters projection, 
+    map = Basemap(projection='gall',
+          # with low resolution,
+          resolution = 'h',
+          # And threshold 100000
+          area_thresh = 10.0,
+          # Centered at US (i.e null island)
+          lat_0=38.901014, lon_0=-77.031317)
+    map.drawcoastlines()
+    map.drawcountries()
+    map.fillcontinents(color = 'coral')
+    map.drawmapboundary()
+    map.plot(lats,lons, 'ro', markersize=12)
+    plt.show()
+        
 def schedulecost(sol):
     totalprice=0
     capfee=0
