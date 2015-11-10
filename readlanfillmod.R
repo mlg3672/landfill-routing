@@ -113,40 +113,75 @@ FindLatLong<-function(df){
   return(geto)
 }
 
-# region 1 geocode ----
-endR1<-dat[dat$state==c("HI","AR","OR","WA","ID","LA","WY","MO",
+# rearrange PV data columns
+allstart <-data.frame(lon=datos$lon,lat=datos$lat, size=datos$size, 
+                      state=datos$state, stringsAsFactors = F)
+# region 1 geocode, reduce pts ----
+endR1<-dat[dat$state %in% c("HI","AR","OR","WA","ID","LA","WY","MO",
                         "AZ","NM","TX","OK","KS","NV","UT","CO",
                         "CA","NE","MT","AK"),] 
 endR1gis<-FindLatLong(endR1) # geocode
-endR1gis<-cbind(endR1gis,endR1) # merge AK data
+endR1gis<-cbind(endR1gis,endR1) # merge gis data
 endR1gis<-rbind(AKcases,endR1gis) # merge AK data
+plot(endR1gis$lon,endR1gis$lat) # plot locations
 
+subendR1<-ReducePoints2(endR1gis,x=10) # reduce points
+plot(subendR1$lon,subendR1$lat)
+
+startR1<-FindClusters(subendR1,n=10)
+substartR1<-CombinePoints2(cl,startR1) # combined PV locations df
+
+startR1<-allstart[allstart$state %in% c("HI","AR","OR","WA","ID","LA","WY","MO",
+                                    "AZ","NM","TX","OK","KS","NV","UT","CO",
+                                    "CA","NE","MT","AK"),] # split pv by region
 # region 2 geocode --------
-endR2<-dat[dat$state==c("IA", "IL", "CT","SD", "NY", "NJ", "IN", 
+endR2<-dat[dat$state %in% c("IA", "IL", "CT","SD", "NY", "NJ", "IN", 
                         "WI", "WV","ND", "MN", "MI", "KY", "OH", 
                         "PA", "TN", "MS"),] 
 endR2gis<-FindLatLong(endR2) # geocode
 endR2gis<-cbind(endR2gis,endR2) # merge gis dat
 endR2gis<-rbind(endR2gis,ILcases) # merge IL data
+plot(endR2gis$lon,endR2gis$lat) # plot locations
 
+subendR2<-ReducePoints2(endR2gis,x=10) # reduce points
+plot(subendR2$lon,subendR2$lat)
+
+startR2<-allstart[allstart$state %in% c("IA", "IL", "CT","SD", "NY", "NJ", "IN", 
+                                        "WI", "WV","ND", "MN", "MI", "KY", "OH", 
+                                        "PA", "TN", "MS"),] # split pv by region
 # region 3 geocode --------
-endR3<-dat[dat$state==c("RI", "GA", "SC", "TN", "MS","AL", "SC", "FL", "NC","MA"),] 
+endR3<-dat[dat$state %in% c("RI", "GA", "SC", "TN", "MS","AL", "SC", "FL", "NC","MA"),] 
 endR3gis<-FindLatLong(endR3) # geocode
 endR3gis<-cbind(endR3gis,endR3) # merge gis data
+plot(endR3gis$lon,endR3gis$lat) # plot locations
 
+subendR3<-ReducePoints2(endR3gis,x=10) # reduce points
+plot(subendR3$lon,subendR3$lat)
+
+startR3<-allstart[allstart$state %in% c("RI", "GA", "SC", "TN", "MS",
+                                        "AL", "SC", "FL", "NC","MA"),] # split pv by region
 # region 4 geocode --------
-endR4<-dat[dat$state==c("DC","VA","DE","MD"),] 
+endR4<-dat[dat$state %in% c("DC","VA","DE","MD"),] 
 endR4gis<-FindLatLong(endR4) # geocode
 endR4gis<-cbind(endR4gis,endR4) # merge gis data
+plot(endR4gis$lon,endR4gis$lat) # plot locations
 
+subendR4<-ReducePoints2(endR4gis,x=10) # reduce points
+plot(subendR4$lon,subendR4$lat)
 
+startR4<-allstart[allstart$state %in% c("DC","VA","DE","MD"),] # split pv by region
 # region 5 geocode --------
-endR5<-dat[dat$state==c("VT","NH","ME"),] 
+endR5<-dat[dat$state %in% c("VT","NH","ME"),] 
 endR5gis<-FindLatLong(endR5) # geocode
 endR5gis<-cbind(endR5gis,endR5) # merge gis dat
+plot(endR5gis$lon,endR5gis$lat) # plot locations
 
-# plot region locations ----
-plot(endR2gis$lon,endR2gis$lat) 
+subendR5<-ReducePoints2(endR5gis,x=10) # reduce points
+plot(subendR5$lon,subendR5$lat)
+
+startR5<-allstart[allstart$state %in% c("VT","NH","ME"),] # split pv by region
+
+
 
 #endR1g<-endR1gis[!is.na(endR1gis$lon),] # eliminate NA values
 
@@ -155,17 +190,7 @@ plot(endR2gis$lon,endR2gis$lat)
 #dat<-rbind(AKcases,dat) # merge AK data - done region 1 above
 #dat<-rbind(ILcases,dat) # merge IL data - done region 2 above
 
-# rearrange PV data columns
-allstart <-data.frame(lon=datos$lon,lat=datos$lat, size=datos$size, 
-                    state=datos$state, stringsAsFactors = F)
-
-#split PV by region -----
-startR1<-allstart[allstart$state==c("HI","AR","OR","WA","ID","LA","WY","MO",
-                               "AZ","NM","TX","OK","KS","NV","UT","CO",
-                               "CA","NE","MT","AK"),]
-
-## reduce the number of points by elimination --------
-# due to limiation of gmap to 2000 queries 
+#  limitation of gmap to 2000 queries 
 
 # find nearest LF point, eliminate most frequent
 require(geosphere)
@@ -222,21 +247,22 @@ ReducePoints2<-function(df,x){
 }
 
 # run 
-subendR1<-ReducePoints2(endR1gis,x=10) # reduce points
-plot(subendR1$lon,subendR1$lat)
+
 
 # reduce start points by combining ---- 
 set.seed(100)
 require(graphics)
 #cluster analysis - use startR1 df
 
-x <- data.frame(lon=as.numeric(startR1$lon), lat = as.numeric(startR1$lat))
-colnames(x) <- c("x", "y") #change column name
-(cl <- kmeans(x, 10)) # determine number of clusers
-
-#plot PV clusters and centers
-plot(x, col = cl$cluster)#ylim=c(36,41),xlim=c(-81,-73))
-points(cl$centers, col = 1:2, pch = 8, cex = 2)
+FindClusters<- function(df,n){
+  # n is the number of clusters
+  x <- data.frame(lon=as.numeric(df$lon), lat = as.numeric(df$lat))
+  colnames(x) <- c("x", "y") #change column name
+  (cl <- kmeans(x, n)) # determine number of clusers
+  plot(x, col = cl$cluster)# #plot PV clusters 
+  points(cl$centers, col = 1:2, pch = 8, cex = 2) # plot centers
+  return(cl)
+}
 
 #combination function
 CombinePoints2 <-function(cl,df){
@@ -264,7 +290,7 @@ CombinePoints2 <-function(cl,df){
 }
 
 #run combination function
-substartR1<-CombinePoints2(cl,startR1) # combined PV locations df
+
 
 # Pros : quick
 # Cons : centers are not actual points in data
