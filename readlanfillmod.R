@@ -73,51 +73,6 @@ ILcases<-cbind(ILcases,ILgis)
 colnames(ILcases)<- c("name","city","county","state","zip","lon","lat")
 dat<-dat[!grepl("IL",dat$state),] # delete IL from original dataframe
 
-
-
-
-# add region code column -----
-dat$region<-rep("000",dim(dat)[1])
-datos$region<-rep("000",dim(datos)[1])
-## code 001 for west coast 
-t0<-data.frame(c("HI","AR","OR","WA","ID","LA","WY","MO",
-                 "AZ","NM","TX","OK","KS","NV","UT","CO",
-                 "CA","NE","MT","AK"))
-
-dat<-regioncode(t0,"001",dat)
-datos<-regioncode(t0,"001",datos) 
-## code 002 for midwest 
-t0<-data.frame(c("IA", "IL", "CT","SD", "NY", "NJ", "IN", 
-                 "WI", "WV","ND", "MN", "MI", "KY", "OH", 
-                 "PA", "TN", "MS"))
-dat<-regioncode(t0,"002",dat)
-datos<-regioncode(t0,"002",datos) 
-
-## code 003 for south
-t0<-data.frame(c("RI", "GA", "SC", "TN", "MS","AL", "SC", "FL", "NC","MA"))
-dat<-regioncode(t0,"003",dat)
-datos<-regioncode(t0,"003",datos) 
-
-## run code 004 for mid-atlantic 
-t0<-data.frame(c("DC","VA","DE","MD"))
-dat<-regioncode(t0,"004",dat)
-datos<-regioncode(t0,"004",datos) 
-
-## run code 005 for new england
-t0<-data.frame(c("VT","NH","ME"))
-dat<-regioncode(t0,"005",dat)
-datos<-regioncode(t0,"005",datos) 
-
-regioncode<-function(t0,code,tab){
-  # t0 is a dataframe of strings,states in region
-  # code is a string which designates region
-  # tab is a dataframe which needs to be labeled 
-  t1<-as.list(t(t0))
-  t2<-paste(t1,collapse = "|")
-  tab[grepl(t2,tab$state),]$region<-code
-  return(tab)
-}
-
 ##  find lat lon -----------
 library(ggmap)
 library(plyr)
@@ -149,65 +104,79 @@ FindLatLong<-function(df){
   gisdf3 <-geocode(paste(c("landfill"),wzcity$city,wzcity$state, wzcity$zip,"USA",sep=","))
   
   # bind columns of lat lon
-  wcountygis<-cbind(wcounty,gisdf0)
-  wzipgis<-cbind(wzip,gisdf1)
-  wcitygis<-cbind(wcity,gisdf2)
-  wzcitygis<-cbind(wzcity,gisdf3)
+  wcountygis<-cbind(gisdf0,wcounty)
+  wzipgis<-cbind(gisdf1,wzip)
+  wcitygis<-cbind(gisdf2,wcity)
+  wzcitygis<-cbind(gisdf3,wzcity)
   
   geto<-rbind(wcountygis,wzipgis, wcitygis,wzcitygis) # bind all dataframes
   return(geto)
 }
 
-# region geocode, plot, reduce
+# region 1 geocode ----
 endR1<-dat[dat$state==c("HI","AR","OR","WA","ID","LA","WY","MO",
                         "AZ","NM","TX","OK","KS","NV","UT","CO",
                         "CA","NE","MT","AK"),] 
 endR1gis<-FindLatLong(endR1) # geocode
-plot(endR1$lon,endR1$lat) # plot region locations
-endR1<-endR1[!is.na(endR1$lon),] # eliminate NA values
-subendR1<-ReducePoints2(endR1,x=5) # reduce points
+endR1gis<-cbind(endR1gis,endR1) # merge AK data
+endR1gis<-rbind(AKcases,endR1gis) # merge AK data
 
- # run regioncode-->
+# region 2 geocode --------
+endR2<-dat[dat$state==c("IA", "IL", "CT","SD", "NY", "NJ", "IN", 
+                        "WI", "WV","ND", "MN", "MI", "KY", "OH", 
+                        "PA", "TN", "MS"),] 
+endR2gis<-FindLatLong(endR2) # geocode
+endR2gis<-cbind(endR2gis,endR2) # merge gis dat
+endR2gis<-rbind(endR2gis,ILcases) # merge IL data
+
+# region 3 geocode --------
+endR3<-dat[dat$state==c("RI", "GA", "SC", "TN", "MS","AL", "SC", "FL", "NC","MA"),] 
+endR3gis<-FindLatLong(endR3) # geocode
+endR3gis<-cbind(endR3gis,endR3) # merge gis data
+
+# region 4 geocode --------
+endR4<-dat[dat$state==c("DC","VA","DE","MD"),] 
+endR4gis<-FindLatLong(endR4) # geocode
+endR4gis<-cbind(endR4gis,endR4) # merge gis data
 
 
+# region 5 geocode --------
+endR5<-dat[dat$state==c("VT","NH","ME"),] 
+endR5gis<-FindLatLong(endR5) # geocode
+endR5gis<-cbind(endR5gis,endR5) # merge gis dat
 
-# add AK, IL data already geocoded
-dat<-rbind(AKcases[,2:7],dat) # merge AK data
-dat<-rbind(ILcases[,2:6],dat) # merge IL data
+# plot region locations ----
+plot(endR2gis$lon,endR2gis$lat) 
 
-#plot lat lon pairs -----
-endpoints <- data.frame(lon=geto$lon,lat=geto$lat, state=geto$state, region=geto$region)
-plot(endpoints$lon, endpoints$lat)
-dim(endpoints)
+#endR1g<-endR1gis[!is.na(endR1gis$lon),] # eliminate NA values
 
+
+# add AK, IL data already geocoded 
+#dat<-rbind(AKcases,dat) # merge AK data - done region 1 above
+#dat<-rbind(ILcases,dat) # merge IL data - done region 2 above
+
+# rearrange PV data columns
 allstart <-data.frame(lon=datos$lon,lat=datos$lat, size=datos$size, 
-                    state=datos$state, region=datos$region, stringsAsFactors = F)
-# test set
-substart<-allstart[1:1000,]
-subend<-endpoints[1:1000,]
+                    state=datos$state, stringsAsFactors = F)
 
-#split pairs by region 
-subendR1<-endpoints[grepl("001",endpoints$region),]
-substartR1<-allstart[grepl("001",allstart$region),]
+#split PV by region -----
+startR1<-allstart[allstart$state==c("HI","AR","OR","WA","ID","LA","WY","MO",
+                               "AZ","NM","TX","OK","KS","NV","UT","CO",
+                               "CA","NE","MT","AK"),]
 
 ## reduce the number of points by elimination --------
 # due to limiation of gmap to 2000 queries 
 
 # find nearest LF point, eliminate most frequent
 require(geosphere)
-p1<-endpoints[1,1:2]
-p2<-endpoints[2,1:2]
-distGeo(p1,p2)# error could not find function
-
-all<-distm(endpoints[1:2,1:2]) # produces matrix of as the crow flies distances
-NAall<-is.na(all[1,]) # if use which.min not necessary
-NAall[1]<-T # if use which.min not necessary
 
 Nearest<-function(df) {
   # takes a data frame with x-lon and y-lat as first two columns
   # finds the points at the nearest distance assuming planar
-  df$nearest<-NA
-  df$y.near<-NA
+  df$nearest<-rep(NA,dim(df)[1])
+  print("add nearest row worked")
+  df$y.near<-rep(NA,dim(df)[1])
+  print("add near row worked")
   matrix<-distm(df[,1:2]) # use to produce distance matrix
   for (x in 1:dim(df)[1]) {
     index<-which.min(matrix[x,-x]) # finds min index
@@ -253,16 +222,15 @@ ReducePoints2<-function(df,x){
 }
 
 # run 
-ReducePoints(subend,x=3)
-plot(subend$lon,subend$lat)
-subendR4<-ReducePoints2(subend,x=100)
+subendR1<-ReducePoints2(endR1gis,x=10) # reduce points
+plot(subendR1$lon,subendR1$lat)
 
 # reduce start points by combining ---- 
 set.seed(100)
 require(graphics)
-#cluster analysis
-datf<-allstart[grepl("004",allstart$region),] # assign region
-x <- data.frame(lon=as.numeric(datf$lon), lat = as.numeric(datf$lat))
+#cluster analysis - use startR1 df
+
+x <- data.frame(lon=as.numeric(startR1$lon), lat = as.numeric(startR1$lat))
 colnames(x) <- c("x", "y") #change column name
 (cl <- kmeans(x, 10)) # determine number of clusers
 
@@ -270,25 +238,33 @@ colnames(x) <- c("x", "y") #change column name
 plot(x, col = cl$cluster)#ylim=c(36,41),xlim=c(-81,-73))
 points(cl$centers, col = 1:2, pch = 8, cex = 2)
 
-#run combination function
-substartR4<-CombinePoints2(cl,datf) # combined PV locations df
-
 #combination function
 CombinePoints2 <-function(cl,df){
   # cl is kmeans output
   # df is original df with size and lon lat data
   newdf<-data.frame(lon=as.numeric(),lat=as.numeric(),
-                    size=as.numeric(),number=as.numeric())
+                    size=as.numeric(),number=as.numeric(),
+                    dist=as.numeric())
   for (x in 1:dim(cl$centers)[1]) {
     cf<-df[cl$cluster==x,]
     size<-sum(as.numeric(cf$size))
+    p1<-cl$centers[x,1:2]
+    dist<-0
+    for (a in 1:dim(cf)[1]){
+      p2<-matrix(c(as.numeric(cf$lon[1]),as.numeric(cf$lat[1])),ncol=2)
+      newdist<-distMeeus(p1,p2)
+      dist<-dist + newdist
+    }
+    #print(dist,dist/1e3)
     nos<-dim(cf)[1]
-    newdf<-rbind(newdf, matrix(c(cl$centers[x,1],cl$centers[x,2],size, nos), ncol=4))
+    newdf<-rbind(newdf, matrix(c(cl$centers[x,1],cl$centers[x,2],size, nos,dist/1e3), ncol=5))
   }
-  colnames(newdf)<-c("lon","lat","size","number") # missing stae
+  colnames(newdf)<-c("lon","lat","size","number","distkm") # missing state
   return(newdf)
 }
 
+#run combination function
+substartR1<-CombinePoints2(cl,startR1) # combined PV locations df
 
 # Pros : quick
 # Cons : centers are not actual points in data
@@ -302,28 +278,29 @@ FindRoutes<-function(start,end){
   routes<-data.frame(from.lon=as.numeric(),from.lat=as.numeric(),
                      to.lon=as.numeric(),to.lat=as.numeric(),
                    distance=as.numeric(),size=as.numeric(),
-                   from.state=as.character(), to.state=as.character())
+                   number=as.numeric(), to.state=as.character())
   for (y in 1:dim(start)[1]){
     from<-as.numeric(start[y,1:2])
     for (x in 1:dim(end)[1]) {
-      print("x is",str(x))
+      #print("x is",str(x))
       to<-as.numeric(end[x,1:2])
       distance <- mapdist(from, to, mode="driving", output="simple")
       newrow<-matrix(c(from[1],
                        from[2],
                        to[1],
                        to[2],
-                       distance$miles,
+                       distance$km,
+                       start[y,"distkm"],
                        start[y,"size"],
-                       "NA", 
-                       end[y,]$state),ncol=8)
+                       start[y,"number"],
+                       end[y,]$state),ncol=9)
       
-      print(newrow)
+      #print(newrow)
       routes<-rbind(newrow, routes)
       }
   }
-  colnames(routes)<-c("from.lon","from.lat","to.lon","to.lat",
-                      "distance","size", "from.state", "to.state")
+  colnames(routes)<-c("from.lon","from.lat","to.lon","to.lat","routekm",
+                      "clusterkm","size", "number", "to.state")
   return(routes)
   }
 
@@ -331,27 +308,29 @@ FindRoutes<-function(start,end){
 GenCodes<-function(start,end,routes){
   code<-data.frame(from=as.character(),to=as.character(),
                  routeid=as.numeric(),distance=as.numeric(),
-                 size=as.numeric())
+                 distance2=as.numeric(),size=as.numeric())
   i=0
   for (x in 1:dim(start)[1]){
     s<-paste0("AA",LETTERS[x])
     for (y in 1:dim(end)[1]){
       i<-i+1
-      print("i is",str(i))
-      dist<-as.numeric(as.character(routes[i,"distance"]))
+      #print("i is",str(i))
+      dist<-as.numeric(as.character(routes[i,"routekm"]))
       size<-as.numeric(as.character(routes[i,"size"]))
-      newrow<-matrix(c(s,"RG4",y,dist,size),ncol=5)
-      print(newrow)
+      number<-as.numeric(as.character(routes[i,"number"]))
+      dist2<-as.numeric(as.character(routes[i,"clusterkm"]))
+      newrow<-matrix(c(s,"RG1",y,dist,dist2,size,number),ncol=7)
+      #print(newrow)
       code<-rbind(newrow,code)
       }
     }
-  colnames(code)<-c("from","to","routeid","distance","size")
+  colnames(code)<-c("from","to","routeid","routekm","clusterkm","size","installs")
   return(code)
   }
 #run
-routes<-FindRoutes(start=substartR4,end=subendR4)
-code<-GenCodes(start=substartR4,end=subendR4, routes=routes)
+routes<-FindRoutes(start=substartR1,end=subendR1)
+code<-GenCodes(start=substartR1,end=subendR1, routes=routes)
 # write data to csv -----
 write.csv(x=routes,file="scheduleR4.csv") #write to csv file
-write.table(routes, "schedule3R4.txt", quote=F,sep=",") # write to text file
-write.table(code, "schedule2R4.txt", quote=F,sep=",") # write to text file
+write.table(routes, "schedule3R1.txt", quote=F,sep=",") # write to text file
+write.table(code, "schedule2R1.txt", quote=F,sep=",") # write to text file
