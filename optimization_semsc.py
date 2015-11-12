@@ -53,20 +53,22 @@ for line in open('schedule3R2.txt'):# reading routes for optimization purposes d
     routes.setdefault((origin,dest),[])
     # Add details to the list of possible routes
     routes[(origin,dest)].append((land,float(r_dist),float(size),float(cl_dist),int(installs)))
-print(routes)
+    
+    
+#print(routes)
 
 item=list()
 routekeys=list(routes.keys())
 for d in routekeys: 
     item.append((d[0], routes[d][1][2]))
-print(item)
+print("item is:",item)
 
 destination = list(routes.keys())[1][1]
 
-capacity = list() # facility capacity
+capacity = {} # facility capacity
 for d in routes[routekeys[1]]:
-    capacity.append((d[0],100e4))
-print(capacity)
+    capacity[d[0]]=100e4
+print("capacity is:",capacity)
 
 locations = {}
 
@@ -75,7 +77,7 @@ for line in open('schedule2R2.txt'):# reading codes for mapping purposes
     locations.setdefault((f_lon,f_lat),[])
     # Add details to the list of possible routes
     locations[(f_lon,f_lat)].append((float(to_lon),float(to_lat),float(r_distance),float(size),float(cl_distance),int(nos)))
-print(locations)
+#print(locations)
     
 #domain= {}
 #domain=[(0,len(capacity)-1)]*len((item)*1) 
@@ -126,24 +128,22 @@ def schedulecost(sol):
     for i in capacity:
         weight.setdefault((i),[])
         tot.setdefault((i),[])
-    print(weight)
-    print(tot)
     for d in range(int(len(sol))):
         # sol is the solution set, a list
         # Get the outbound routes
         origin=item[d][0]
         outbound=routes[(origin,destination)][int(sol[d])]
-        carbon=outbound[1]
-        
         # get the size
         size = item[d][1]
-        #get the mass
+        ## convert size to mass
         mass=.056*size # metric tons
         # get trips
         trips=int(mass/cap)
         ## extract the destination id
         ent=outbound[0]
-        weight[(ent)].append(int(size))
+        ## assign mass to facility
+        weight[ent].append(int(mass))
+        print("weight is",weight)
        
         # Total price is the co2 kg of all outbound routes
         totalprice+=carbon_intensity*hv*mass*km_per_mile/(outbound[1]*mpg_ton)
@@ -154,10 +154,11 @@ def schedulecost(sol):
         for j in weight[i][:]:
             k+=j
         tot[i].append(int(k))
-    print(tot)
     # check against capacity
     for i in capacity:
-        if int(tot[i][0])>int(capacity[i][0]): 
+        #print(tot[i][0],capacity[i])
+        #print(type(capacity[i]),type(tot[i][0]))
+        if int(tot[i][0])>int(capacity[i]): 
             # penalize for overcapacity
             capfee+=100000
         if int(tot[i][0])>0:
