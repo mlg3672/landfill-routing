@@ -5,55 +5,76 @@ import pandas as pd
 from mpl_toolkits.basemap import Basemap
 import matplotlib.pyplot as plt
 import numpy as np
-# to do : 1. add func to generate domain - done 10/7
-#         2. split the mass to send to two diff destinations 
-#            A. assume flow between transfer station and LF destination
-#            B. generate solution set with destinations and mass
-#               - s = [] for each item 
-#         3. add capacity constraints - done 10/7
-#            A. penalize capacity violations
-#         4. add constraint on decentralization - done 10/7
-#             A. penalize solutions with multiple domain type
-# routes outbound from origin to destination
+# to do : 1. add co2 calc to cost function
+#            A. calculate route co2
+#               1. add installation mass estimate - done
+#               2. add recycling energy estimate
+#            B. calculate pre-route co2
+#         2. trips calc for transportation
+#            A. add trips variable
+#            B. trips as a multiple interger for capacity
+#         3. visualize results
+#            A. map: red points start, green pts end
+#            B. pie chart share of facilities co2
+#            C. bar chart share of facilities mass
+#         4. add item, destination and capacity automatically - done
 # item = (name,origin, size)
-# destination 
+ 
 # price = distance
-#item = [('001','BOS',50), ('002','DAL',30), ('003','CAK',50),
- #         ('004','MIA',40),('005','ORD',60), ('006','OMA',70)] # this is the demo list
-item = [("AAJ", 10859.348 ),
-        ("AAI",23278.949662),
-        ("AAH" ,8692.9),
-        ("AAG", 20906.12),
-        ("AAF" ,4604.964),
-        ("AAE" ,18203.811),
-        ("AAD" ,17360.872),
-        ("AAC" ,31590.422),
-        ("AAB",39549.43),
-        ("AAA",4154.589)]
-capacity = {('1'):[150e4],
-          ('2'):[300e4],
-           ('3'):[150e4],
-          ('4'):[300e4],
-           ('5'):[15e4]}
-# Laguardia
-destination='RG4'#'LGA'
+
+#item = [("AAJ", 10859.348 ),
+#        ("AAI",23278.949662),
+#        ("AAH" ,8692.9),
+#        ("AAG", 20906.12),
+#        ("AAF" ,4604.964),
+#        ("AAE" ,18203.811),
+#        ("AAD" ,17360.872),
+#        ("AAC" ,31590.422),
+#        ("AAB",39549.43),
+#        ("AAA",4154.589)]
+#capacity = {('1'):[150e4],
+#          ('2'):[300e4],
+#           ('3'):[150e4],
+#          ('4'):[300e4],
+#           ('5'):[15e4]}
+
+#destination='RG4'# region
+# constants
+carbon_intensity=73.15 #kgco2 per MMBTU
+hv=0.128450 #MMBTU per gal diesel
+mpg_ton=55 #miles-tons per gal
+cap=8.39 #truck capacity in metric tons (18500 lbs)
+km_per_mile=1.609 #km per mile
 
 routes={}
 # 
-for line in open('schedule2R4.txt'):# demo file is'schedule_semsc.txt'
-    index,origin,dest,land,dist,size=line.strip().split(',')
+for line in open('schedule3R2.txt'):# reading routes for optimization purposes df
+    index,origin,dest,land,r_dist,cl_dist,size,installs=line.strip().split(',')
     routes.setdefault((origin,dest),[])
     # Add details to the list of possible routes
-    routes[(origin,dest)].append((land,float(dist),float(size)))
+    routes[(origin,dest)].append((land,float(r_dist),float(size),float(cl_dist),int(installs)))
 print(routes)
 
-locations={}
-# 
-for line in open('schedule3R4.txt'):# demo file is'schedule_semsc.txt'
-    nos,f_lon,f_lat,to_lon,to_lat,distance,size,f_state,to_state=line.strip().split(',')
+item=list()
+routekeys=list(routes.keys())
+for d in routekeys: 
+    item.append((d[0], routes[d][1][2]))
+print(item)
+
+destination = list(routes.keys())[1][1]
+
+capacity = list() # facility capacity
+for d in routes[routekeys[1]]:
+    capacity.append((d[0],100e4))
+print(capacity)
+
+locations = {}
+
+for line in open('schedule2R2.txt'):# reading codes for mapping purposes
+    nos,f_lon,f_lat,to_lon,to_lat,r_distance,cl_distance,size,nos,to_state=line.strip().split(',')
     locations.setdefault((f_lon,f_lat),[])
     # Add details to the list of possible routes
-    locations[(f_lon,f_lat)].append((float(to_lon),float(to_lat),float(distance),float(size)))
+    locations[(f_lon,f_lat)].append((float(to_lon),float(to_lat),float(r_distance),float(size),float(cl_distance),int(nos)))
 print(locations)
     
 #domain= {}
@@ -66,9 +87,7 @@ def getminutes(t):
 def printschedule(r):
     # input schedule for outbound route of each item
     for d in range(int(len(r))):
-        print(d)
         name=item[d][0]
-        print(name)
         origin=item[d][0]
         out=routes[(origin,destination)][int(r[d])]
         print('%10s%10s%10s %5s km%3s' % (name,origin,destination,
@@ -114,15 +133,20 @@ def schedulecost(sol):
         # Get the outbound routes
         origin=item[d][0]
         outbound=routes[(origin,destination)][int(sol[d])]
+        carbon=outbound[1]
         
         # get the size
         size = item[d][1]
+        #get the mass
+        mass=.056*size # metric tons
+        # get trips
+        trips=int(mass/cap)
         ## extract the destination id
         ent=outbound[0]
         weight[(ent)].append(int(size))
        
-        # Total price is the price of all outbound routes
-        totalprice+=outbound[1]
+        # Total price is the co2 kg of all outbound routes
+        totalprice+=carbon_intensity*hv*mass*km_per_mile/(outbound[1]*mpg_ton)
         #totalprice+=returnf[2]
 
     for i in weight: 
