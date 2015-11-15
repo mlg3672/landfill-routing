@@ -123,9 +123,9 @@ Nearest<-function(df) {
   # takes a data frame with x-lon and y-lat as first two columns
   # finds the points at the nearest distance assuming planar
   df$nearest<-rep(NA,dim(df)[1])
-  print("add nearest row worked")
+  #print("add nearest row worked")
   df$y.near<-rep(NA,dim(df)[1])
-  print("add near row worked")
+  #print("add near row worked")
   matrix<-distm(df[,1:2]) # use to produce distance matrix
   for (x in 1:dim(df)[1]) {
     index<-which.min(matrix[x,-x]) # finds min index
@@ -155,7 +155,7 @@ ReducePoints<-function(df,x){
     df<-Nearest(df)
     m<-Mode(df$y.near)
     df<-df[-m,]
-    plot(df$lon,df$lat)
+    #plot(df$lon,df$lat)
   }
   return(df)
 }
@@ -163,10 +163,13 @@ ReducePoints<-function(df,x){
 ReducePoints2<-function(df,x){
   #find the x most remote points
   df<-df[!is.na(df$lon),]
-  df<-Nearest(df)
-  cf<-df[order(df$nearest,decreasing = T),]
-  cf<-cf[1:x,]
-  plot(cf$lon,cf$lat)
+  cf<-df
+  if (dim(df)[1]>x){
+    df<-Nearest(df)
+    cf<-df[order(df$nearest,decreasing = T),]
+    cf<-cf[1:x,]
+    plot(cf$lon,cf$lat)
+  }
   return(cf)
 }
 
@@ -239,7 +242,7 @@ FindRoutes<-function(start,end){
                        start[y,"distkm"],
                        start[y,"size"],
                        start[y,"number"],
-                       end[y,]$state),ncol=9)
+                       end[x,"state"]),ncol=9)
       
       #print(newrow)
       routes<-rbind(newrow, routes)
@@ -281,6 +284,30 @@ WriteData<-function(routes,code,r){
   write.csv(x=routes,fname) #write routes to csv file
   write.table(routes, fname2, quote=F,sep=",") # write routes to text file
   write.table(code, fname3, quote=F,sep=",") # write code to text file
+}
+
+WriteCluster<-function(df,cluster,r){
+  # takes start df and kmeans cluster df
+  
+  # 1. add new columns to df
+  df$cl<-cluster$cluster
+  df$centrlon<-0
+  df$centrlat<-0
+  # 2. add lat lon of cluster center
+  for(y in 1:dim(df)[1]){
+    print("y is",str(y))
+    for(x in 1:dim(cl$centers)[1]){
+      print("x is",str(x))
+      if(x==df$cl[y]){
+        df$centrlon[y]<-cl$centers[x,1]
+        df$centrlat[y]<-cl$centers[x,2]
+        #print(df[y,])
+      }
+    }
+  }
+  fname<-paste0("centersR",r,".csv")
+  write.csv(x=df,fname) #write routes to csv file
+  return(df)
 }
 
 # rearrange PV data columns
@@ -357,13 +384,13 @@ endR3gis<-endR3gis[!is.na(endR3gis$lon),] # eliminate NA values
 endR3g<-data.frame(lon=endR3gis$lon,lat=endR3gis$lat, 
                    state=endR3gis$state, stringsAsFactors = F) #rearrange columns
 
-subendR3<-ReducePoints3(endR3g,x=10) # identify outliers, repeat to reduce pts
-
+subendR3<-ReducePoints2(endR3g,x=10) # identify outliers, repeat to reduce pts
+plot(subendR3$lon,subendR3$lat)
 endR3g<-EraseOutliers(subendR3,endR3g) # eliminate outliers from df
 
 startR3<-allstart[allstart$state %in% c("RI", "GA", "SC", "TN", "MS",
                                         "AL", "SC", "FL", "NC","MA"),] # split pv by region
-cl<-FindClusters(startR3,n=10) # cluster anlaysis on pv
+cl<-FindClusters(startR3,n=30) # cluster anlaysis on 
 substartR3<-CombinePoints2(cl,startR3) # combin PV locations
 
 routes3<-FindRoutes(start=substartR3,end=subendR3) # find routes
@@ -380,12 +407,14 @@ endR4gis<-endR4gis[!is.na(endR4gis$lon),] # eliminate NA values
 endR4g<-data.frame(lon=endR4gis$lon,lat=endR4gis$lat, 
                    state=endR4gis$state, stringsAsFactors = F) #rearrange columns
 
-subendR4<-ReducePoints4(endR4g,x=10) # identify outliers, repeat to reduce pts
+subendR4<-ReducePoints(endR4g,x=10) # identify outliers, repeat to reduce pts
 
 endR4g<-EraseOutliers(subendR4,endR4g) # eliminate outliers from df
 
 startR4<-allstart[allstart$state %in% c("DC","VA","DE","MD"),] # split pv by region
-cl<-FindClusters(startR4,n=10) # cluster anlaysis on pv
+startR4<-startR4[startR4$lat<45&startR4$lat>30,]
+plot(startR4$lon,startR4$lat)
+cl<-FindClusters(startR4,n=15) # cluster anlaysis on pv
 substartR4<-CombinePoints2(cl,startR4) # combin PV locations
 
 routes4<-FindRoutes(start=substartR4,end=subendR4) # find routes
@@ -408,6 +437,7 @@ endR5g<-EraseOutliers(subendR5,endR5g) # eliminate outliers from df
 
 startR5<-allstart[allstart$state %in% c("VT","NH","ME"),] # split pv by region
 cl<-FindClusters(startR5,n=30) # cluster anlaysis on pv
+R5wcl<-WriteCluster(startR5,cl,r=5)
 substartR5<-CombinePoints2(cl,startR5) # combine PV locations
 
 routes5<-FindRoutes(start=substartR5,end=subendR5) # find routes
