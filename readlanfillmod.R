@@ -64,7 +64,7 @@ ILcases<-read.csv("IL_landfills.csv",colClasses = "character")
 summary(ILcases)
 ILcases<-ILcases[-40,]
 ILcases$zip<-"NA"# insert zip column
-ILgis<-geocode(paste(ILcases$address, ILcases$city, ILcases$state, "USA",sep=","))
+#ILgis<-geocode(paste(ILcases$address, ILcases$city, ILcases$state, "USA",sep=","))
 ILcases<-cbind(ILcases,ILgis)
 colnames(ILcases)<- c("name","city","county","state","zip","lon","lat")
 dat<-dat[!grepl("IL",dat$state),] # delete IL from original dataframe
@@ -87,24 +87,24 @@ FindLatLong<-function(df){
   
   #select values
   wnone<-df[NAzip & NAcity & NAcounty,]# rows with no values
-  #wcounty<-df[NAzip & NAcity & !NAcounty,] #find rows with only county
+  wcounty<-df[NAzip & NAcity & !NAcounty,] #find rows with only county
   #wzip<-df[!NAzip & NAcity,]#find rows with zip but no city value
   wcity<-df[!NAcity & NAzip,]# find rows with city value but no zip 
-  wzcity<-df[!NAzip & !NAcity,]# find rows with city and zip 
+  #wzcity<-df[!NAzip & !NAcity,]# find rows with city and zip 
   
   #geocode -----
-  #gisdf0<-geocode(paste(c("landfill"),wcounty$county, wcounty$state,"USA",sep=","))
+  gisdf0<-geocode(paste(c("landfill"),wcounty$county, wcounty$state,"USA",sep=","))
   #gisdf1 <-geocode(paste(c("landfill"),wzip$state, wzip$zip,"USA",sep=","))
   gisdf2 <-geocode(paste(c("landfill"),wcity$city, wcity$state,"USA",sep=","))
-  gisdf3 <-geocode(paste(c("landfill"),wzcity$city,wzcity$state, wzcity$zip,"USA",sep=","))
+  #gisdf3 <-geocode(paste(c("landfill"),wzcity$city,wzcity$state, wzcity$zip,"USA",sep=","))
   
   # bind columns of lat lon
-  #wcountygis<-cbind(gisdf0,wcounty)
+  wcountygis<-cbind(gisdf0,wcounty)
   #wzipgis<-cbind(gisdf1,wzip)
   wcitygis<-cbind(gisdf2,wcity)
-  wzcitygis<-cbind(gisdf3,wzcity)
+  #wzcitygis<-cbind(gisdf3,wzcity)
   
-  geto<-rbind( wcitygis,wzcitygis) # bind all dataframes
+  geto<-rbind( wcountygis,wcitygis) # bind all dataframes
   return(geto)
 }
 
@@ -234,10 +234,10 @@ FindRoutes<-function(start,end){
       #print("x is",str(x))
       to<-as.numeric(end[x,1:2])
       distance <- mapdist(from, to, mode="driving", output="simple")
-      newrow<-matrix(c(from[1],
-                       from[2],
-                       to[1],
-                       to[2],
+      newrow<-matrix(c(as.numeric(from[1]),
+                       as.numeric(from[2]),
+                       as.numeric(to[1]),
+                       as.numeric(to[2]),
                        distance$km,
                        start[y,"distkm"],
                        start[y,"size"],
@@ -260,20 +260,20 @@ GenCodes<-function(start,end,routes){
                  distance2=as.numeric(),size=as.numeric())
   i=0
   for (x in 1:dim(start)[1]){
-    s<-paste0("AA",LETTERS[x])
+    s<-paste0("AA",x)
     for (y in 1:dim(end)[1]){
       i<-i+1
       #print("i is",str(i))
       dist<-as.numeric(as.character(routes[i,"routekm"]))
       size<-as.numeric(as.character(routes[i,"size"]))
-      number<-as.numeric(as.character(routes[i,"number"]))
+      state<-as.character(routes[i,"to.state"])
       dist2<-as.numeric(as.character(routes[i,"clusterkm"]))
-      newrow<-matrix(c(s,"RG1",y,dist,dist2,size,number),ncol=7)
+      newrow<-matrix(c(s,"RG1",y,dist,dist2,size,state),ncol=7)
       #print(newrow)
       code<-rbind(newrow,code)
       }
     }
-  colnames(code)<-c("from","to","routeid","routekm","clusterkm","size","installs")
+  colnames(code)<-c("from","to","routeid","routekm","clusterkm","size","tostate")
   return(code)
   }
 
@@ -295,13 +295,14 @@ WriteCluster<-function(df,cluster,r){
   df$centrlat<-0
   # 2. add lat lon of cluster center
   for(y in 1:dim(df)[1]){
-    print("y is",str(y))
+    #print("y is",str(y))
     for(x in 1:dim(cl$centers)[1]){
-      print("x is",str(x))
+      #print("x is",str(x))
       if(x==df$cl[y]){
         df$centrlon[y]<-cl$centers[x,1]
         df$centrlat[y]<-cl$centers[x,2]
         #print(df[y,])
+        break
       }
     }
   }
@@ -319,25 +320,27 @@ endR1<-dat[dat$state %in% c("HI","AR","OR","WA","ID","LA","WY","MO",
                             "AZ","NM","TX","OK","KS","NV","UT","CO",
                             "CA","NE","MT","AK"),] 
 endR1gis<-FindLatLong(endR1) # geocode
-endR1gis<-cbind(endR1gis,endR1) # merge gis end data
+
 endR1gis<-rbind(AKcases,endR1gis) # merge AK end data
 plot(endR1gis$lon,endR1gis$lat) # plot end locations
 
 endR1gis<-endR1gis[!is.na(endR1gis$lon),] # eliminate N values
-endR1g<-data.frame(lon=endR1gis$lon,lat=endR1gis$lat, 
+endR1g<-data.frame(lon=as.numeric(endR1gis$lon),lat=as.numeric(endR1gis$lat), 
                    state=endR1gis$state, stringsAsFactors = F) #rearrange columns
 
-subendR1<-ReducePoints1(endR1g,x=10) # identify outliers, repeat to reduce pts
+subendR1<-ReducePoints2(endR1g,x=10) # identify outliers, repeat to reduce pts
 
 endR1g<-EraseOutliers(subendR1,endR1g) # eliminate outliers from df
 
 startR1<-allstart[allstart$state %in% c("HI","AR","OR","WA","ID","LA","WY","MO",
                                         "AZ","NM","TX","OK","KS","NV","UT","CO",
                                         "CA","NE","MT","AK"),] # split pv by region
-cl<-FindClusters(startR1,n=10) # cluster anlaysis on pv
+cl<-FindClusters(startR1,n=40) # cluster anlaysis on pv
+R1wcl<-WriteCluster(startR1,cl,r=1)
 substartR1<-CombinePoints2(cl,startR1) # combin PV locations
 
 routes1<-FindRoutes(start=substartR1,end=subendR1) # find routes
+routes11<-routes1[!is.na(routes1$routekm),]# elminate NA routekm
 code1<-GenCodes(start=substartR1,end=subendR1, routes=routes1) # get codes
 WriteData(routes1,code1,r=1)# write to text files
 
@@ -363,6 +366,7 @@ startR2<-allstart[allstart$state %in% c("IA", "IL", "CT","SD", "NY", "NJ", "IN",
                                         "WI", "WV","ND", "MN", "MI", "KY", "OH", 
                                         "PA", "TN", "MS"),] # split pv by region
 cl<-FindClusters(startR2,n=40) # cluster anlaysis on pv
+R2wcl<-WriteCluster(startR2,cl,r=2)
 substartR2<-CombinePoints2(cl,startR2) # combin PV locations
 # should we allow algorithm to pick the number of clusters
 # cl <- kmeans(x, 5, nstart = 25))
@@ -391,6 +395,7 @@ endR3g<-EraseOutliers(subendR3,endR3g) # eliminate outliers from df
 startR3<-allstart[allstart$state %in% c("RI", "GA", "SC", "TN", "MS",
                                         "AL", "SC", "FL", "NC","MA"),] # split pv by region
 cl<-FindClusters(startR3,n=30) # cluster anlaysis on 
+R3wcl<-WriteCluster(startR3,cl,r=3)
 substartR3<-CombinePoints2(cl,startR3) # combin PV locations
 
 routes3<-FindRoutes(start=substartR3,end=subendR3) # find routes
@@ -407,14 +412,16 @@ endR4gis<-endR4gis[!is.na(endR4gis$lon),] # eliminate NA values
 endR4g<-data.frame(lon=endR4gis$lon,lat=endR4gis$lat, 
                    state=endR4gis$state, stringsAsFactors = F) #rearrange columns
 
-subendR4<-ReducePoints(endR4g,x=10) # identify outliers, repeat to reduce pts
+subendR4<-ReducePoints2(endR4g,x=10) # identify outliers, repeat to reduce pts
 
 endR4g<-EraseOutliers(subendR4,endR4g) # eliminate outliers from df
 
 startR4<-allstart[allstart$state %in% c("DC","VA","DE","MD"),] # split pv by region
 startR4<-startR4[startR4$lat<45&startR4$lat>30,]
 plot(startR4$lon,startR4$lat)
-cl<-FindClusters(startR4,n=15) # cluster anlaysis on pv
+cl<-FindClusters(startR4,n=20) # cluster anlaysis on pv
+R4wcl<-WriteCluster(startR4,cl,r=4)
+
 substartR4<-CombinePoints2(cl,startR4) # combin PV locations
 
 routes4<-FindRoutes(start=substartR4,end=subendR4) # find routes
