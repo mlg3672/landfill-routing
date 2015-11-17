@@ -5,19 +5,12 @@ import pandas as pd
 from mpl_toolkits.basemap import Basemap
 import matplotlib.pyplot as plt
 import numpy as np
-# to do : 1. add co2 calc to cost function
-#            A. calculate route co2
-#               1. add installation mass estimate - done
-#               2. add recycling energy estimate - done
-#            B. calculate pre-route co2
-#         2. trips calc for transportation - done
-#            A. add trips variable - done
-#            B. trips as a multiple interger for capacity- done
+# to do : 
 #         3. visualize results
 #            A. map: red points start, green pts end
 #            B. pie chart share of facilities co2
 #            C. bar chart share of facilities mass
-#         4. add item, destination and capacity automatically - done
+
 
 # constants
 carbon_intensity=.07315 #mtco2 per MMBTU
@@ -25,8 +18,9 @@ hv=0.128450 #MMBTU per gal diesel
 mpg=11 #miles per gal
 cap=1.10231e8 #truck capacity in metric tons (50,000 lbs)
 km_per_mile=1.609 #km per mile
-recy=0.005 # recycling energy MWh/kg recovered
-recov=0.2 # percent recovered
+recy=0 #0.005 # recycling energy MWh/kg recovered
+recov=0 # 0.2 # percent recovered
+size_to_mass = .09411 # 8 kg/ 85 W in metric tons
 ton_to_lbs=2000
 MWh_to_kWh=1000
 
@@ -87,13 +81,39 @@ def getminutes(t):
     x=time.strptime(t,'%H:%M')
     return x[3]*60+x[4]
 
-def printschedule(r):
-    # input schedule for outbound route of each item
+def writeresults(r,filename):
+    header = np.array(['origin','dest','fac','f_dist','size','state', 'mass','realdist'])
+    data = np.zeros(shape=(len(r),8),dtype=object)
     for d in range(int(len(r))):
         origin=item[d][0]
+        size=item[d][1]
+        mass = size_to_mass*size
+        trips = int(mass/cap)
         out=routes[(origin,destination)][int(r[d])]
-        print('%10s%5s %5s %3skm %5sMW %3s' % (origin,destination,
-                                                  out[0],int(out[1]), int(out[3]/1000), out[4]))
+        realdist= trips*int(out[1])+int(out[2])
+        data[d] = [origin,destination,
+                 out[0],int(out[1]), 
+                 int(out[3])/1000, 
+                 out[4], 
+                 int(mass),int(realdist)]
+    np.savetxt(filename, data,delimiter=" ",newline="\n",fmt='%s')
+   
+
+                
+def printschedule(r):
+    # input schedule for outbound route of each item
+    print('%10s %5s %5s %3s %3s %3s %3s %3s' % ('origin','dest',
+                                                  'fac','f_dist','size', 
+                                                 'state', 'mass','realdist'))
+    for d in range(int(len(r))):
+        origin=item[d][0]
+        size = item[d][1]
+        mass = size_to_mass*size
+        trips = int(mass/cap)
+        out=routes[(origin,destination)][int(r[d])]
+        realdist= trips*out[1]+out[2]
+        print('%10s%5s %5s %3skm %5sMW %3s %3smt %3skm' % (origin,destination,
+                                                  out[0],int(out[1]), int(out[3]/1000), out[4], int(mass),int(realdist)))
                                                   
 def plotschedule(r):
     lats = []
@@ -122,7 +142,9 @@ def schedulecost(sol):
     totalprice=0
     capfee=0
     cenfee=0
-    elec=0
+    co2=0
+    ch4=0
+    no2=0
     weight = {}
     tot={}
     for i in capacity:
@@ -135,29 +157,29 @@ def schedulecost(sol):
         outbound=routes[(origin,destination)][int(sol[d])]
         # get the size
         size = item[d][1]
+        print('size is',size)
         ## convert size to mass
-        mass=.09411*size #  8 kg/85W * kW in mt
+        mass=size_to_mass*size #  8 kg/85W * kW in mt
         #print("mass is:",mass)
         # get trips
         trips=int(mass/cap)
+        print("trips is",trips)
         ## extract the destination id
         ent=outbound[0]
         # recycling energy depends on state of facility
         state=outbound[4]
-        #print('state is',state)
-        #print('efactors are',efactors[(state)][0][0])#,efactors[(state)][0][1],efactors[(state)][0][2])
-        co2=efactors[(state)][0][0]*mass*recov*recy*MWh_to_kWh*1000/(ton_to_lbs)# tons co2  
-        ch4=efactors[(state)][0][1]*mass*recov*recy*MWh_to_kWh*1000/(ton_to_lbs)
-        no2=efactors[(state)][0][2]*mass*recov*recy*MWh_to_kWh*1000/(ton_to_lbs)
-        elec+=co2+ch4*25+no2*298 # GWP
+        #find emissions by ghg gas
+        co2+=efactors[(state)][0][0]*mass*recov*recy*MWh_to_kWh*1000/(ton_to_lbs)# tons co2  
+        ch4+=efactors[(state)][0][1]*mass*recov*recy*MWh_to_kWh*1000/(ton_to_lbs)
+        no2+=efactors[(state)][0][2]*mass*recov*recy*MWh_to_kWh*1000/(ton_to_lbs)
+        
         ## assign mass to facility
         weight[ent].append(int(mass))
    
        
         # Total price is the co2 kg of all outbound routes
         totalprice+=(carbon_intensity*hv*(trips*outbound[1]+outbound[2]))/(km_per_mile*mpg)#mt
-        #totalprice+=returnf[2]
-
+        print(totalprice)
     for i in weight: 
         k =0
         for j in weight[i][:]:
@@ -173,8 +195,16 @@ def schedulecost(sol):
         if int(tot[i][0])>0:
             # penalize for decentralization
             cenfee+=0
-    #print('electricity impact is',int(elec))        
-    return int(totalprice+capfee+cenfee+elec)
+    if recov == 0: # should pv be recovered?
+        elec = 0
+    else: 
+        elec=co2+ch4*25+no2*298 # GWP
+        
+    score = np.array([totalprice,capfee,cenfee,elec,co2,ch4,no2])
+    np.savetxt('score.csv',score,delimiter=" ")
+    
+    return totalprice+capfee+cenfee+elec
+
 
 def randomoptimize(domain,costf):
     # costf refers to the cost function
