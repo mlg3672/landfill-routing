@@ -452,3 +452,37 @@ code5<-GenCodes(start=substartR5,end=subendR5, routes=routes5) # get codes
 WriteData(routes5,code5,r=5)# write to text files
 
 #endR1g<-endR1gis[!is.na(endR1gis$lon),] # eliminate NA values
+
+# get stats --------
+df<-data.frame(size=as.numeric(startR5[as.numeric(startR5$size)>1000,3]),stringsAsFactors = FALSE)
+sum(df)
+
+# change pv values -------
+ReplaceValues(filename=codeR1.txt,cap=335.36*1e6,avgdist=58)
+ReplaceValues(filename=codeR2.csv,cap=141.06*1e6,avgdist=44)
+ReplaceValues(filename=codeR3.txt,cap=41.47*1e6,avgdist=24.4)
+ReplaceValues(filename=codeR4.txt,cap=16.51*1e6,avgdist=11.3)
+ReplaceValues(filename=codeR5.csv,cap=3.86*1e6,avgdist=15)
+
+# function to find new pv value and replace for region routes files
+ReplaceValues<-function(filename,cap,avgdist){
+  oldpv<-read.csv(filename, colClasses= "character")
+  oldpv[,3]<-as.numeric(oldpv[,3]) # check for number of columns
+  oldpv[,4]<-as.numeric(oldpv[,4])
+  oldpv[,5]<-as.numeric(oldpv[,5])
+  oldpv[,6]<-as.numeric(oldpv[,6])
+  oldpv<-oldpv[!is.na(oldpv$routekm),]
+  total<-sum(as.numeric(unique(oldpv$size)))
+
+    for (t in 1:dim(oldpv)[1]){
+      new_size=cap*as.numeric(oldpv$size[t])/total
+      new_installs=(new_size-oldpv$size[t])/20
+      oldpv$size[t]=new_size
+      new_clusterkm=new_installs*avgdist
+      oldpv$clusterkm[t]=+new_clusterkm
+    }
+  #change route dist assume average 20 kW
+  newfilename = paste0("rev_",filename)
+  write.table(oldpv, newfilename, quote=F,sep=",") #write routes to csv file
+  }
+
