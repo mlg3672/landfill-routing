@@ -13,19 +13,25 @@ import numpy as np
 
 
 # constants
-carbon_intensity=.07315 #mtco2 per MMBTU
+carbon_intensity=2237. #g co2 per MMBTU
 hv=0.128450 #MMBTU per gal diesel
 mpg=11 #miles per gal
-cap=1.10231e8 #truck capacity in metric tons (50,000 lbs)
+cap=10 #30 truck capacity in metric tons (20,000 - 60,000 lbs)
 km_per_mile=1.609 #km per mile
-recy=0 #0.005 # recycling energy MWh/kg recovered
-recov=0 # 0.2 # percent recovered
-size_to_mass = .09411 # 8 kg/ 85 W in metric tons
+recov=92/.160 #.02# recycling energy kWhel/kWp for 1.125 m2 recovered
+recyl= 0 # .97 percent recovered
+size_to_mass = .0917 # 15.6 kg/ 170 W in metric tons
 ton_to_lbs=2000
 MWh_to_kWh=1000
-
+alum = 1.84 # kg aluminum per m2 module
+meters = 1.125/160 # meters squared per watt peak
+recov_al = 31e6 * 2.7778e-7 # recycling energy kWh/kg of aluminum
+shred = 0.34e6*2.778e-7 # kWhel per kg mass
+insol=1700
+eff=0.24
+PR=0.8
 efactors = {}
-with open('emissionfactors/emissionfactors_lbskwh.csv') as f:
+with open('emissionfactors/emissionfactors_gkwh.csv') as f:
     next(f)
     for line in f:
         state,abbrev,co2,ch4,n20,so2,nox,hg=line.strip().split(',')[0:8]
@@ -37,7 +43,7 @@ f.close()
 
 routes={}
 # 
-with open('codeR1.txt') as f:# reading routes for optimization purposes df
+with open('rev_codeR1.txt') as f:# reading routes for optimization purposes df
     next(f) # skip header
     for line in f:
         index,origin,dest,land,r_dist,cl_dist,size,state=line.strip().split(',')
@@ -50,8 +56,8 @@ f.close()
 
 item=list()
 routekeys=list(routes.keys())
-for d in routekeys: 
-    item.append((d[0], routes[d][1][2]))
+for d in routekeys:
+    item.append((d[0], routes[d][1][3]))
 print("item is:",item)
 
 destination = list(routes.keys())[1][1]
@@ -88,9 +94,9 @@ def writeresults(r,filename):
         origin=item[d][0]
         size=item[d][1]
         mass = size_to_mass*size
-        trips = int(mass/cap)
+        trips = math.ceil(mass/(cap))
         out=routes[(origin,destination)][int(r[d])]
-        realdist= trips*int(out[1])+int(out[2])
+        realdist= trips*(out[1])+int(out[2])
         data[d] = [origin,destination,
                  out[0],int(out[1]), 
                  int(out[3])/1000, 
@@ -109,7 +115,7 @@ def printschedule(r):
         origin=item[d][0]
         size = item[d][1]
         mass = size_to_mass*size
-        trips = int(mass/cap)
+        trips = math.ceil(mass/(cap))
         out=routes[(origin,destination)][int(r[d])]
         realdist= trips*out[1]+out[2]
         print('%10s%5s %5s %3skm %5sMW %3s %3smt %3skm' % (origin,destination,
@@ -157,34 +163,41 @@ def schedulecost(sol):
         outbound=routes[(origin,destination)][int(sol[d])]
         # get the size
         size = item[d][1]
-        print('size is',size)
         ## convert size to mass
-        mass=size_to_mass*size #  8 kg/85W * kW in mt
-        #print("mass is:",mass)
+        mass=size_to_mass*size #  15.6 kg/170W * kW in mt
+        Al = alum * size * meters * 1000 # kg of aluminum
+        #print('proportion of aluminum is: ' + str(Al/1000/mass) )
         # get trips
-        trips=int(mass/cap)
-        print("trips is",trips)
+        trips=math.ceil(mass/cap)
+        
         ## extract the destination id
         ent=outbound[0]
-        # recycling energy depends on state of facility
+        # emission factor of state where facility located
         state=outbound[4]
+        # find recycling and shredding energy
+        energy = (size*recov + Al*recov_al)*recyl
+        shrd_enrgy = size*size_to_mass*(1-recyl)*shred*1000
+        
         #find emissions by ghg gas
-        co2+=efactors[(state)][0][0]*mass*recov*recy*MWh_to_kWh*1000/(ton_to_lbs)# tons co2  
-        ch4+=efactors[(state)][0][1]*mass*recov*recy*MWh_to_kWh*1000/(ton_to_lbs)
-        no2+=efactors[(state)][0][2]*mass*recov*recy*MWh_to_kWh*1000/(ton_to_lbs)
+        co2+=efactors[(state)][0][0]*(energy+shrd_enrgy) # grams co2  
+        ch4+=efactors[(state)][0][1]*(energy+shrd_enrgy)
+        no2+=efactors[(state)][0][2]*(energy+shrd_enrgy)
         
         ## assign mass to facility
-        weight[ent].append(int(mass))
-   
+        weight[ent].append(int(size))
+           
        
         # Total price is the co2 kg of all outbound routes
-        totalprice+=(carbon_intensity*hv*(trips*outbound[1]+outbound[2]))/(km_per_mile*mpg)#mt
-        print(totalprice)
+        totalprice+=(carbon_intensity*hv*(trips*outbound[1]+outbound[2]))/(km_per_mile*mpg)#grams
+        
     for i in weight: 
         k =0
         for j in weight[i][:]:
             k+=j
         tot[i].append(int(k))
+    s= 0
+    for i in tot: 
+        s+=sum(tot[i])
     # check against capacity
     for i in capacity:
         #print(tot[i][0],capacity[i])
@@ -198,17 +211,46 @@ def schedulecost(sol):
     if recov == 0: # should pv be recovered?
         elec = 0
     else: 
-        elec=co2+ch4*25+no2*298 # GWP
-        
+        elec=co2+ch4*25+no2*298 # g CO2-equ
+    
+    #print('grams of CO2-equ per kWp is: ' + str((totalprice+elec)/s)) 
+    #print('or per m2 is: '+ str((elec)/(s*meters*1000)))
+    print('g CO2-equ per kWh is: ' + str(round((totalprice+elec)/(s*insol*PR*eff*meters*30/1000),2)))
     score = np.array([totalprice,capfee,cenfee,elec,co2,ch4,no2])
     np.savetxt('score.csv',score,delimiter=" ")
     
     return totalprice+capfee+cenfee+elec
 
+def printcapacity(sol):
+    weight = {}
+    tot={}
+    for i in capacity:
+        weight.setdefault((i),[])
+        tot.setdefault((i),[])
+    for d in range(int(len(sol))):
+        # sol is the solution set, a list
+        # Get the outbound routes
+        origin=item[d][0]
+        outbound=routes[(origin,destination)][int(sol[d])]
+        ## extract the destination id
+        ent=outbound[0]
+        #get the size
+        size = item[d][1]
 
+        ## assign mass to facility
+        weight[ent].append(int(size))
+        
+   
+    for i in weight: 
+        k =0
+        for j in weight[i][:]:
+            k+=j
+        tot[i].append(int(k))
+    return(tot)
+    
 def randomoptimize(domain,costf):
     # costf refers to the cost function
-    best=999999999
+    best=9999999999999
     bestr=None
     for i in range(1,1000):
         # Create a random solution
